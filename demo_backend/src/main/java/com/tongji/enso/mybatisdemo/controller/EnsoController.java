@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/enso")
 public class EnsoController {
-
     @Autowired
     private EnsoMapper ensoMapper;
 
@@ -159,6 +158,7 @@ public class EnsoController {
         String result2 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_gtc");
         List<Object> list2 = gson.fromJson(result2, listType);
 
+
         String result3 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_cross");
         List<Object> list3 = gson.fromJson(result3, listType);
 
@@ -167,6 +167,7 @@ public class EnsoController {
 
         String result5 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mean");
         List<Object> list5 = gson.fromJson(result5, listType);
+
         series_ENSO.put("data",list5);
         series_EnsembleForecast.put("data",list4);
         series_ENSOCross.put("data",list3);
@@ -944,12 +945,10 @@ public class EnsoController {
                 latestDate = year + "-" + month;
             }
         }
-
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-M");  // YearMonth 无法直接解析形如 xxxx-x
 
         YearMonth latestYearMonth = YearMonth.parse(latestDate, dateFormatter);
         YearMonth earliestYearMonth = YearMonth.parse(earliestDate, dateFormatter);
-        earliestYearMonth = earliestYearMonth.plusMonths(11);  // 因为每次查询前11个月的数据
 
         Map<String, Object> result = new HashMap<>();
         result.put("earliestDate", earliestYearMonth);

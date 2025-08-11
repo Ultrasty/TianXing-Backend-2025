@@ -265,7 +265,6 @@ public class ImgsController {
                 latestDate = date;
             }
         }
-
         Map<String, Object> result = new HashMap<>();
         result.put("earliestDate", earliestDate);
         result.put("latestDate", latestDate);
