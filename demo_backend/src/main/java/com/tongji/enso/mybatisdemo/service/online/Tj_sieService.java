@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class Tj_sieService {
@@ -27,5 +28,19 @@ public class Tj_sieService {
     public List<Tj_sie> findByYear(String year) {
         return tj_sieMapper.findByYear(year);
     }
+    //修改开始
+    public List<String> findAvailableYears() {
+        return tj_sieMapper.selectDistinctYears();
+    }
+
+    public List<String> findAvailableMonths() {
+        return tj_sieMapper.selectDistinctMonths();
+    }
+
+    public Map<String, String> findLatestDate() {
+        return tj_sieMapper.selectLatestYearMonth();
+    }
+    //修改结束
+    
 
 }

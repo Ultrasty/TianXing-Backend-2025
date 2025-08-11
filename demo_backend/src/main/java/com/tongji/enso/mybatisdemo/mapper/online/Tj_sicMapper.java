@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Select;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface Tj_sicMapper {
@@ -17,4 +18,9 @@ public interface Tj_sicMapper {
     List<Tj_sic> findErrorByMonth(String year, String month);
 
     List<Tj_sic> findErrorBoxByYearAndModel(String year);
+    void insertTj_sic(Tj_sic tjSic);
+    List<String> findDistinctYears();
+    List<String> findDistinctMonthsByYear(String year);
+    List<String> findDistinctDaysByYearAndMonth(String year, String month);
+    Map<String, String> findLatestDate();
 }
