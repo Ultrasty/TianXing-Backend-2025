@@ -23,7 +23,7 @@
     </resultMap>
 
     <!-- 使用结果映射 -->
-    <select id="findByMonthAndModel" resultMap="tjNaoResultMap">
+    <select id="findByMonthAndModel_V2" resultMap="tjNaoResultMap">
         SELECT * FROM tj_nao 
         WHERE year=#{year} 
         AND month=#{month} 

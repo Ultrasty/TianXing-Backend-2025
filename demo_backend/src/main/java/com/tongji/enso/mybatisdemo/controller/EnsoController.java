@@ -60,7 +60,7 @@ public class EnsoController {
         List<Map<String, Object>> series= new ArrayList<>();
         Map<String, Object> series_ENSO = new HashMap<>();
         Map<String, Object> series_EnsembleForecast = new HashMap<>();
-        Map<String, Object> series_ENSOCross = new HashMap<>();
+//        Map<String, Object> series_ENSOCross = new HashMap<>();
         Map<String, Object> series_ENSOASC = new HashMap<>();
         Map<String, Object> series_ENSOGTC = new HashMap<>();
 
@@ -107,18 +107,18 @@ public class EnsoController {
             }
 
         }
-        legend_data.add("EnsembleForecast");
-        legend_data.add("ENSO-Cross");
+        legend_data.add("ENSO-MC");
+//        legend_data.add("ENSO-Cross");
         legend_data.add("ENSO-ASC");
         legend_data.add("ENSO-GTC");
-        legend_data.add("ENSO");
+        legend_data.add("ENSO-MEAN");
         int xAxis_interval=2;
         String yAxis_type="value";
-        String series_EnsembleForecast_name=("EnsembleForecast");
-        String series_ENSOCross_name=("ENSO-Cross");
+        String series_EnsembleForecast_name=("ENSO-MC");
+//        String series_ENSOCross_name=("ENSO-Cross");
         String series_ENSOASC_name=("ENSO-ASC");
         String series_ENSOGTC_name=("ENSO-GTC");
-        String series_ENSO_name=("ENSO");
+        String series_ENSO_name=("ENSO-MEAN");
         String series_type=("line");
 
         title.put("text", title_text);
@@ -136,15 +136,15 @@ public class EnsoController {
         yAxis.put("type",yAxis_type);
         series.add(series_ENSO);
         series.add(series_EnsembleForecast);
-        series.add(series_ENSOCross);
+//        series.add(series_ENSOCross);
         series.add(series_ENSOASC);
         series.add(series_ENSOGTC);
         series_ENSO.put("name",series_ENSO_name);
         series_ENSO.put("type",series_type);
         series_EnsembleForecast.put("name",series_EnsembleForecast_name);
         series_EnsembleForecast.put("type",series_type);
-        series_ENSOCross.put("name",series_ENSOCross_name);
-        series_ENSOCross.put("type",series_type);
+//        series_ENSOCross.put("name",series_ENSOCross_name);
+//        series_ENSOCross.put("type",series_type);
         series_ENSOASC.put("name",series_ENSOASC_name);
         series_ENSOASC.put("type",series_type);
         series_ENSOGTC.put("name",series_ENSOGTC_name);
@@ -159,8 +159,8 @@ public class EnsoController {
         List<Object> list2 = gson.fromJson(result2, listType);
 
 
-        String result3 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_cross");
-        List<Object> list3 = gson.fromJson(result3, listType);
+//        String result3 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_cross");
+//        List<Object> list3 = gson.fromJson(result3, listType);
 
         String result4 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mc");
         List<Object> list4 = gson.fromJson(result4, listType);
@@ -178,7 +178,7 @@ public class EnsoController {
 
         series_ENSO.put("data",list5);
         series_EnsembleForecast.put("data",list4);
-        series_ENSOCross.put("data",list3);
+//        series_ENSOCross.put("data",list3);
         series_ENSOASC.put("data",list1);
         series_ENSOGTC.put("data",list2);
         //最后的总和
