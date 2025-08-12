@@ -16,5 +16,21 @@
     <select id="findByYear" resultType="Tj_sie">
         select * from tj_sie where year=#{year}
     </select>
+    <!-- 新增SQL -->
+    <select id="selectDistinctYears" resultType="string">
+        SELECT DISTINCT year FROM tj_sie ORDER BY year DESC
+    </select>
+
+    <select id="selectDistinctMonths" resultType="string">
+        SELECT DISTINCT month FROM tj_sie ORDER BY month ASC
+    </select>
+
+    <select id="selectLatestYearMonth" resultType="map">
+        SELECT year, month 
+        FROM tj_sie 
+        ORDER BY year DESC, month DESC 
+        LIMIT 1
+    </select>
+    <!-- 新增SQL结束 -->
 
 </mapper>

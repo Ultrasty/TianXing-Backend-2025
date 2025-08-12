@@ -24,4 +24,21 @@ public class Tj_naoService {
     public List<Tj_nao> findNAOByModel(String var_model){
         return tj_naomapper.findAllByModel(var_model);
     }
+    public boolean isValidDate(String year, String month) {
+    try {
+        int y = Integer.parseInt(year);
+        int m = Integer.parseInt(month);
+        return m >= 1 && m <= 12;
+    } catch (NumberFormatException e) {
+        return false;
+    }
+    }
+    public List<String> getAvailableYears() {
+        return tj_naomapper.findAvailableYears();
+    }
+
+    public List<String> getMonthsByYear(String year) {
+        return tj_naomapper.findMonthsByYear(year);
+    }
+
 }

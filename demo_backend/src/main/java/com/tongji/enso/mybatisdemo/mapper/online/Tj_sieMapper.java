@@ -5,6 +5,7 @@ import com.tongji.enso.mybatisdemo.entity.online.Tj_sie;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface Tj_sieMapper {
@@ -26,4 +27,9 @@ public interface Tj_sieMapper {
 
 
     List<Tj_sie> findByYear(String year);
+    //新增开始
+    List<String> selectDistinctYears();
+    List<String> selectDistinctMonths();
+    Map<String, String> selectLatestYearMonth();
+    //新增结束
 }

@@ -6,15 +6,16 @@ import com.tongji.enso.mybatisdemo.entity.online.Tj_sie;
 import com.tongji.enso.mybatisdemo.service.online.Tj_sieService;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -45,19 +46,31 @@ public class Tj_sieController {
         HashMap<String, Object> option = new  HashMap<String, Object>();
         return_hashmap.put("option",option);
         
-        List<HashMap<String,Object>> availableList = new ArrayList<>();
-        availableList.add(new HashMap<>());
-        availableList.get(0).put("year",2023);
-        availableList.get(0).put("month",1);
-        return_hashmap.put("availableList",availableList);
+        //修改：删除硬编码的availableList
+        //List<HashMap<String,Object>> availableList = new ArrayList<>();
+        //availableList.add(new HashMap<>());
+        //availableList.get(0).put("year",2023);
+        //availableList.get(0).put("month",1);
+        //return_hashmap.put("availableList",availableList);
 
         HashMap<String, Object> title = new  HashMap<String, Object>();
-        String next_year=Integer.parseInt(year)+1+"";
-        String end_month=Integer.parseInt(month)-1+"";
-        if(Integer.parseInt(month)>1)
-          title.put("text",year+"年"+month+"月~"+next_year+"年"+end_month+"月SIE指数预测结果");
-        else
-          title.put("text",year+"年1月~"+year+"年12月SIE指数预测结果");
+        //String next_year=Integer.parseInt(year)+1+"";
+        //String end_month=month.equals("1") ? "12" : String.valueOf(Integer.parseInt(month) - 1);//修改，确保跨年时正确
+        //if(Integer.parseInt(month)>1)
+        //  title.put("text",year+"年"+month+"月~"+next_year+"年"+end_month+"月SIE指数预测结果");
+        //else
+        //  title.put("text",year+"年1月~"+year+"年12月SIE指数预测结果");
+        
+        int yearInt = Integer.parseInt(year);
+        int monthInt = Integer.parseInt(month);
+
+        // 计算结束年月
+        LocalDate startDate = LocalDate.of(yearInt, monthInt, 1);
+        LocalDate endDate = startDate.plusMonths(11);
+        String endYear = String.valueOf(endDate.getYear());
+        String endMonth = String.valueOf(endDate.getMonthValue());
+        // 设置标题
+        title.put("text", year + "年" + month + "月~" + endYear + "年" + endMonth + "月SIE指数预测结果");
         title.put("left","center");
         option.put("title",title);
 
@@ -116,10 +129,43 @@ public class Tj_sieController {
             }
             series_num++;
         }
+        // 确保数据顺序一致
+        Collections.sort(sieList, (a, b) -> {
+            String[] order = {"prediction_IceTFT", "mean_IceTFT", "upper_IceTFT", "lower_IceTFT"};
+            return Integer.compare(
+                Arrays.asList(order).indexOf(a.getVar_model()),
+                Arrays.asList(order).indexOf(b.getVar_model())
+            );
+        });
 
-        option.put("series",series);
-        return_hashmap.put("option",option);
-        return_hashmap.put("description","2023年9月SIE极小值预测为4.4133，相较于2022年观测偏低，2023年海冰范围预计将比2022年整体偏少。");
+        // 动态生成描述文本
+        double minValue = Double.MAX_VALUE;
+        String minMonthName = "";
+        for (Tj_sie sie : sieList) {
+            if ("prediction_IceTFT".equals(sie.getVar_model()) && sie.getTrans_data() != null) {
+                for (int i = 0; i < sie.getTrans_data().length; i++) {
+                    if (sie.getTrans_data()[i] < minValue) {
+                        minValue = sie.getTrans_data()[i];
+                        minMonthName = xAxis_data[i]; // xAxis_data是月份名称数组
+                    }
+                }
+            }
+        }
+
+        // 生成动态描述
+        int currentYear = Integer.parseInt(year);
+        String desc = String.format("%d年%sSIE极小值预测为%.4f，相较于%d年观测%s。预测显示海冰范围将比基准年%s。",
+            currentYear, minMonthName, minValue,
+            currentYear-1, 
+            minValue < 4.5 ? "偏低" : "偏高", // 4.5为示例
+            minValue < 5.0 ? "整体偏少" : "整体偏多"); // 5.0为示例
+
+        return_hashmap.put("description", desc);
+        
+
+        //option.put("series",series);
+        //return_hashmap.put("option",option);
+        //return_hashmap.put("description","2023年9月SIE极小值预测为4.4133，相较于2022年观测偏低，2023年海冰范围预计将比2022年整体偏少。");
         return return_hashmap;
     }
 
@@ -181,14 +227,33 @@ public class Tj_sieController {
     @GetMapping("/initial/SIEprediction")
     @ApiOperation(value = "SIE可查询日期与最新预报结果", notes = "查询SIE指数预测结果图的可查询日期和最新预报")
     public HashMap<String ,Object> initialSIEprediction(){
-        List<String> yearList = Arrays.asList("2023");
-        List<String> monthList=Arrays.asList("1");
+        //List<String> yearList = Arrays.asList("2023");
+        //List<String> monthList=Arrays.asList("1");
         // 要返回的HashMap
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
-        return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList",monthList);
+        //HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
+        //return_hashmap.put("yearList",yearList);
+        //return_hashmap.put("monthList",monthList);
         // 要返回的对象列表
-        List<Tj_sie> sieList = tj_sieService.findSIEByMonth("2023", "1");
+        //List<Tj_sie> sieList = tj_sieService.findSIEByMonth("2023", "1");
+        // 从数据库获取可用年份和月份
+        List<String> availableYears = tj_sieService.findAvailableYears();
+        List<String> availableMonths = tj_sieService.findAvailableMonths();
+
+        // 获取最新日期
+        Map<String, String> latestDate = tj_sieService.findLatestDate();
+        String latestYear = latestDate.get("year");
+        String latestMonth = latestDate.get("month");
+
+        // 查询最新数据
+        List<Tj_sie> sieList = tj_sieService.findSIEByMonth(latestYear, latestMonth);
+
+        HashMap<String, Object> return_hashmap = new HashMap<String, Object>() {{
+            put("yearList", availableYears);
+            put("monthList", availableMonths);
+            put("defaultYear", latestYear);
+            put("defaultMonth", latestMonth);
+            put("sieInitial", sieList);
+        }};
         // 使用ObjectMapper进行JSON数据解析
         ObjectMapper objectMapper = new ObjectMapper();
         // 遍历返回结果中的每个Tj_sie对象，对其data字段进行解析，并替换为一维数组
@@ -225,5 +290,20 @@ public class Tj_sieController {
         return_hashmap.put("SIEerrorInitial",SIEerrorList);
 
         return return_hashmap;
+    }
+    @ExceptionHandler(DataNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(DataNotFoundException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "请求数据不存在");
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    // 新增自定义异常类
+    static class DataNotFoundException extends RuntimeException {
+        public DataNotFoundException(String message) {
+            super(message);
+        }
     }
 }
