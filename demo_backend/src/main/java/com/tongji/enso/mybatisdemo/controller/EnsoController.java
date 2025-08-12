@@ -118,7 +118,7 @@ public class EnsoController {
 //        String series_ENSOCross_name=("ENSO-Cross");
         String series_ENSOASC_name=("ENSO-ASC");
         String series_ENSOGTC_name=("ENSO-GTC");
-        String series_ENSO_name=("ENSO-MEAN");
+        String series_ENSO_name=("Esemble-mean");
         String series_type=("line");
 
         title.put("text", title_text);
