@@ -368,7 +368,7 @@ public class ImgsController {
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 Enso_ssta", value = "初始化：返回可选年、月、日范围 Enso")
     public Map<String, Object> getSSTAInitMonth()
     {
-        List<Imgs> imgsData = ImgsMapperEnso.findImgsInfoALL("ENSO");
+        List<Imgs> imgsData = ImgsMapperEnso.findImgsInfoALL("ENSO_ASC");
 
         String earliestDate = null;
         String latestDate = null;
@@ -394,18 +394,44 @@ public class ImgsController {
      */
     @GetMapping("/predictionResult/ssta")
     public Map<String,  Object> getSstaData(String year, String month, String day) {
-        List<Imgs> imgsData = ImgsMapperEnso.findImgsInfoByDayType(year, month,"WEA_U10");
+        List<Imgs> imgsData1 = ImgsMapperEnso.findImgsInfoByDayType(year, month,"ENSO_ASC");
+        List<Imgs> imgsData2 = ImgsMapperEnso.findImgsInfoByDayType(year, month,"ENSO_MC");
+        List<Imgs> imgsData3 = ImgsMapperEnso.findImgsInfoByDayType(year, month,"ENSO_GTC");
         Map<String, Object> result = new HashMap<>();
+        int length1 = 0;
+        int length2 = 0;
+        int length3 = 0;
         // 将 data 字段从 JSON 字符串转换为 List<String>
         List<String> imgPaths = new ArrayList<>();
-        if (!imgsData.isEmpty()) {
-            String imgSrcData = imgsData.get(0).getData();
-            imgPaths = Arrays.asList(imgSrcData.split(","));
-        }
-        String title =year+"年"+month+"月 Nino3.4区SST集合平均预测结果";
+        List<String> imgPaths1 = new ArrayList<>();
+        List<String> imgPaths2 = new ArrayList<>();
+        List<String> imgPaths3 = new ArrayList<>();
+        String title1 =year+"年"+month+"月 Nino3.4区SST集合ENSO_ASC";
+        String title2 =year+"年"+month+"月 Nino3.4区SST集合ENSO_MC";
+        String title3 =year+"年"+month+"月 Nino3.4区SST集合ENSO_GTC";
         List<String> titles=new ArrayList<>();
-        for(int i=0;i< imgPaths.size();i++){
-            titles.add(title);
+        if (!imgsData1.isEmpty() && !imgsData2.isEmpty() && !imgsData3.isEmpty()) {
+            String imgSrcData1 = imgsData1.get(0).getData();
+            String imgSrcData2 = imgsData2.get(0).getData();
+            String imgSrcData3 = imgsData3.get(0).getData();
+            imgPaths1 = Arrays.asList(imgSrcData1.split(","));
+            imgPaths2 = Arrays.asList(imgSrcData2.split(","));
+            imgPaths3 = Arrays.asList(imgSrcData3.split(","));
+            length1 = imgPaths1.size();
+            length2 = imgPaths2.size();
+            length3 = imgPaths3.size();
+            for (int i = 0; i < length1; i++) {
+                imgPaths.add(imgPaths1.get(i));
+                titles.add(title1);
+            }
+            for (int i = 0; i < length2; i++) {
+                imgPaths.add(imgPaths2.get(i));
+                titles.add(title2);
+            }
+            for (int i = 0; i < length3; i++) {
+                imgPaths.add(imgPaths3.get(i));
+                titles.add(title3);
+            }
         }
         result.put("data", imgPaths);
         result.put("titles", titles);

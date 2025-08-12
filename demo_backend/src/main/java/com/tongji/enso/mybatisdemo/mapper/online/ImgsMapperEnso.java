@@ -14,7 +14,7 @@ public interface ImgsMapperEnso {
      * 从 imgs 中查询指定年、月、日、类型的数据
      * @return
      */
-    @Select("SELECT * FROM imgs WHERE year = #{year} AND month = #{month} AND type = 'ENSO'")
+    @Select("SELECT * FROM imgs WHERE year = #{year} AND month = #{month} AND type = #{type}")
     List<Imgs> findImgsInfoByDayType(@RequestParam("year") String year, @RequestParam("month") String month, @RequestParam("type") String type);
     @Select("SELECT * FROM imgs WHERE type = #{type}")
     List<Imgs> findImgsInfoALL(@RequestParam("type") String type);

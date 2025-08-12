@@ -168,6 +168,14 @@ public class EnsoController {
         String result5 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mean");
         List<Object> list5 = gson.fromJson(result5, listType);
 
+        if(list5 == null) {
+            list5 = new ArrayList<>();
+            int m = Math.min(list1.size() , Math.min(list2.size() , list4.size()));
+            for(int i=0;i<m;i++){
+                list5.add(((double)list1.get(i) + (double)list2.get(i) + (double)list4.get(i) ) / 3);
+            }
+        }
+
         series_ENSO.put("data",list5);
         series_EnsembleForecast.put("data",list4);
         series_ENSOCross.put("data",list3);
@@ -930,7 +938,7 @@ public class EnsoController {
     @ApiOperation(value = "初始化：返回可选年、月范围 linechart", notes = "返回的是可查询年月")
     public Map<String, Object> getLinechartInitMonth()
     {
-        List<Tj_enso> ensoData = ensoMapper.findTj_ensoInfoByType("nino34_mean");
+        List<Tj_enso> ensoData = ensoMapper.findTj_ensoInfoByType("nino34_asc");
 
         String earliestDate = null;
         String latestDate = null;
