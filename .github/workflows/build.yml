@@ -37,8 +37,8 @@ jobs:
           echo $RANDOM_NUMBER
           echo "$SERVER_KEY" > deploy_key
           chmod 600 deploy_key
-          ssh -o StrictHostKeyChecking=no -i deploy_key root@202.120.171.182 "cd /web && rm -rf TianXing-Backend || true"
-          ssh -o StrictHostKeyChecking=no -i deploy_key root@202.120.171.182 "cd /web && git clone https://ghproxy.com/https://github.com/FXsGithub/TianXing-Backend/"
-          ssh -o StrictHostKeyChecking=no -i deploy_key root@202.120.171.182 "cd /web && /usr/bin/tmux new-session -d -s $RANDOM_NUMBER 'bash -l -c ./build.sh'"
+          ssh -o StrictHostKeyChecking=no -i deploy_key root@202.120.171.182 -p 3306 "cd /web && rm -rf TianXing-Backend || true"
+          ssh -o StrictHostKeyChecking=no -i deploy_key root@202.120.171.182 -p 3306 "cd /web && git clone https://ghproxy.com/https://github.com/FXsGithub/TianXing-Backend/"
+          ssh -o StrictHostKeyChecking=no -i deploy_key root@202.120.171.182 -p 3306 "cd /web && /usr/bin/tmux new-session -d -s $RANDOM_NUMBER 'bash -l -c ./build.sh'"
           
           rm -f deploy_key
