@@ -279,14 +279,23 @@ public class Tj_sieController {
     @GetMapping("/initial/SIEErrorAnalysis")
     @ApiOperation(notes = "SIE预测误差分析可查询日期和最新结果", value = "查询SIE误差分析图的可查询日期和最新结果")
     public HashMap<String,Object> initialSIEerrorAnalysis(){
-        List<String> yearList=Arrays.asList("2022");
-        List<String> monthList=Arrays.asList("1");
+        //List<String> yearList=Arrays.asList("2022");
+        //List<String> monthList=Arrays.asList("1");
+        List<String> availableYears = tj_sieService.findAvailableYears();
+    
+        // 2. 获取最新年份（如果没有数据则使用默认值）
+        String latestYear = tj_sieService.findLatestDate().get("year");
+        if (latestYear == null && !availableYears.isEmpty()) {
+            latestYear = availableYears.get(0); // 使用第一个可用年份
+        } else if (latestYear == null) {
+            latestYear = "2025"; // 最终回退值
+        }
         // 要返回的HashMap
         HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
-        return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList",monthList);
+        return_hashmap.put("yearList",availableYears);
+        return_hashmap.put("defaultYear",latestYear);
 
-        Map<String,Object> SIEerrorList =findErrorAnalysis("2022");
+        Map<String,Object> SIEerrorList =findErrorAnalysis(latestYear);
         return_hashmap.put("SIEerrorInitial",SIEerrorList);
 
         return return_hashmap;
