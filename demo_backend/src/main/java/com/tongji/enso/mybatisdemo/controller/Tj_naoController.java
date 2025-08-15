@@ -15,12 +15,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 @RestController
 @RequestMapping("/nao")
 public class Tj_naoController {
+    private static final Logger logger = LoggerFactory.getLogger(Tj_naoController.class);
 
     @Autowired
     private Tj_naoService tj_naoservice;
@@ -222,8 +225,10 @@ public class Tj_naoController {
      * @return: Map<String, Object>.
      */
      @GetMapping("/initialize/naoPrediction")
+
      @ApiOperation(notes = "初始化预报结果折线图，返回可查询年月", value = "初始化预报结果折线图")
      public Map<String, Object> initialNAOPrediction(){
+         logger.info("Received request for /nao/initialize/naoPrediction");
          List<Obs_nao> naoList = obs_naoservice.findNAOByModel("index_NAO_MCD");
          Map<String, Object> naoMap=new LinkedHashMap<>();
          Map<String,Object> result=new LinkedHashMap<>();
@@ -328,6 +333,7 @@ public class Tj_naoController {
          result.put("option",naoMap);
          result.put("description","描述暂无");
          return result;
+         
      }
 
     /**

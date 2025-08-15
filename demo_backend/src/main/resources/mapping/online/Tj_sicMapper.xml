@@ -19,12 +19,7 @@
     <select id="findErrorBoxByYearAndModel" resultType="Tj_sic">
         select * from tj_sic where year=#{year} and var_model like '%DA%'
     </select>
-     <select id="findErrorByMonth_V2" resultType="Tj_sic">
-        SELECT * FROM tj_sic 
-        WHERE year = #{year} 
-          AND month = #{month}
-          AND var_model LIKE CONCAT(#{year}, '%')
-    </select>
+     
     
     <!-- 新增日期查询方法 -->
     <select id="findDistinctYears" resultType="string">

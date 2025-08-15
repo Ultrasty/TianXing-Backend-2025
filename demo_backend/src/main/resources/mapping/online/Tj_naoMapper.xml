@@ -21,14 +21,6 @@
         <result property="data" column="data"/>
         <result property="var_model" column="var_model"/>
     </resultMap>
-
-    <!-- 使用结果映射 -->
-    <select id="findByMonthAndModel_V2" resultMap="tjNaoResultMap">
-        SELECT * FROM tj_nao 
-        WHERE year=#{year} 
-        AND month=#{month} 
-        AND var_model="index_NAO_MCD"
-    </select>
     <!-- 新增：获取可用年份列表 -->
     <select id="findAvailableYears" resultType="string">
         SELECT DISTINCT year 
