@@ -13,5 +13,35 @@
     <select id="findAllByModel" resultType="Tj_nao">
         select * from tj_nao where var_model=#{var_model}
     </select>
+   
+    <resultMap id="tjNaoResultMap" type="com.tongji.enso.mybatisdemo.entity.online.Tj_nao">
+        <id property="id" column="id"/>
+        <result property="year" column="year"/>
+        <result property="month" column="month"/>
+        <result property="data" column="data"/>
+        <result property="var_model" column="var_model"/>
+    </resultMap>
+
+    <!-- 使用结果映射 -->
+    <select id="findByMonthAndModel_V2" resultMap="tjNaoResultMap">
+        SELECT * FROM tj_nao 
+        WHERE year=#{year} 
+        AND month=#{month} 
+        AND var_model="index_NAO_MCD"
+    </select>
+    <!-- 新增：获取可用年份列表 -->
+    <select id="findAvailableYears" resultType="string">
+        SELECT DISTINCT year 
+        FROM tj_nao 
+        ORDER BY CAST(year AS UNSIGNED) DESC
+    </select>
+    
+    <!-- 新增：根据年份获取可用月份 -->
+    <select id="findMonthsByYear" resultType="string">
+        SELECT DISTINCT month 
+        FROM tj_nao 
+        WHERE year = #{year} 
+        ORDER BY CAST(month AS UNSIGNED)
+    </select>
 
 </mapper>

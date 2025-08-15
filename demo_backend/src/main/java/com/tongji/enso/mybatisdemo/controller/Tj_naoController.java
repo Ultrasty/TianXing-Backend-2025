@@ -233,11 +233,21 @@ public class Tj_naoController {
          result.put("start_year",naoList.get(0).getYear());
          result.put("start_month",naoList.get(0).getMonth());
          result.put("end_year",naoList.get(naoList.size()-1).getYear());
-         result.put("end_month","7");
+         //result.put("end_month","7");
+         // 修改后 (动态获取)
+         String lastMonth = naoList.get(naoList.size()-1).getMonth();
+         result.put("end_month", lastMonth);
 
          // 处理返回数据格式
          Map<String, Object> title=new LinkedHashMap<>();
-         title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", end_year, "7", end_year, "12"));
+         //title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", end_year, "7", end_year, "12"));
+         // 修改后 (动态月份)
+         int startMonth = Integer.parseInt(lastMonth);
+         int endMonth = (startMonth + 5) % 12;
+         endMonth = endMonth == 0 ? 12 : endMonth; // 处理12月边界
+         title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", 
+                 end_year, lastMonth, 
+                 end_year, String.valueOf(endMonth)));
          title.put("left","center");
          naoMap.put("title",title);
          Map<String, Object> tooltip=new LinkedHashMap<>();

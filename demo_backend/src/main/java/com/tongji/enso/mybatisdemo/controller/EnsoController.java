@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/enso")
 public class EnsoController {
-
     @Autowired
     private EnsoMapper ensoMapper;
 
@@ -61,7 +60,7 @@ public class EnsoController {
         List<Map<String, Object>> series= new ArrayList<>();
         Map<String, Object> series_ENSO = new HashMap<>();
         Map<String, Object> series_EnsembleForecast = new HashMap<>();
-        Map<String, Object> series_ENSOCross = new HashMap<>();
+//        Map<String, Object> series_ENSOCross = new HashMap<>();
         Map<String, Object> series_ENSOASC = new HashMap<>();
         Map<String, Object> series_ENSOGTC = new HashMap<>();
 
@@ -108,18 +107,18 @@ public class EnsoController {
             }
 
         }
-        legend_data.add("EnsembleForecast");
-        legend_data.add("ENSO-Cross");
+        legend_data.add("ENSO-MC");
+//        legend_data.add("ENSO-Cross");
         legend_data.add("ENSO-ASC");
         legend_data.add("ENSO-GTC");
-        legend_data.add("ENSO");
+        legend_data.add("ENSO-MEAN");
         int xAxis_interval=2;
         String yAxis_type="value";
-        String series_EnsembleForecast_name=("EnsembleForecast");
-        String series_ENSOCross_name=("ENSO-Cross");
+        String series_EnsembleForecast_name=("ENSO-MC");
+//        String series_ENSOCross_name=("ENSO-Cross");
         String series_ENSOASC_name=("ENSO-ASC");
         String series_ENSOGTC_name=("ENSO-GTC");
-        String series_ENSO_name=("ENSO");
+        String series_ENSO_name=("Esemble-mean");
         String series_type=("line");
 
         title.put("text", title_text);
@@ -137,15 +136,15 @@ public class EnsoController {
         yAxis.put("type",yAxis_type);
         series.add(series_ENSO);
         series.add(series_EnsembleForecast);
-        series.add(series_ENSOCross);
+//        series.add(series_ENSOCross);
         series.add(series_ENSOASC);
         series.add(series_ENSOGTC);
         series_ENSO.put("name",series_ENSO_name);
         series_ENSO.put("type",series_type);
         series_EnsembleForecast.put("name",series_EnsembleForecast_name);
         series_EnsembleForecast.put("type",series_type);
-        series_ENSOCross.put("name",series_ENSOCross_name);
-        series_ENSOCross.put("type",series_type);
+//        series_ENSOCross.put("name",series_ENSOCross_name);
+//        series_ENSOCross.put("type",series_type);
         series_ENSOASC.put("name",series_ENSOASC_name);
         series_ENSOASC.put("type",series_type);
         series_ENSOGTC.put("name",series_ENSOGTC_name);
@@ -159,17 +158,27 @@ public class EnsoController {
         String result2 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_gtc");
         List<Object> list2 = gson.fromJson(result2, listType);
 
-        String result3 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_cross");
-        List<Object> list3 = gson.fromJson(result3, listType);
+
+//        String result3 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_cross");
+//        List<Object> list3 = gson.fromJson(result3, listType);
 
         String result4 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mc");
         List<Object> list4 = gson.fromJson(result4, listType);
 
         String result5 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mean");
         List<Object> list5 = gson.fromJson(result5, listType);
+
+        if(list5 == null) {
+            list5 = new ArrayList<>();
+            int m = Math.min(list1.size() , Math.min(list2.size() , list4.size()));
+            for(int i=0;i<m;i++){
+                list5.add(((double)list1.get(i) + (double)list2.get(i) + (double)list4.get(i) ) / 3);
+            }
+        }
+
         series_ENSO.put("data",list5);
         series_EnsembleForecast.put("data",list4);
-        series_ENSOCross.put("data",list3);
+//        series_ENSOCross.put("data",list3);
         series_ENSOASC.put("data",list1);
         series_ENSOGTC.put("data",list2);
         //最后的总和
@@ -929,7 +938,7 @@ public class EnsoController {
     @ApiOperation(value = "初始化：返回可选年、月范围 linechart", notes = "返回的是可查询年月")
     public Map<String, Object> getLinechartInitMonth()
     {
-        List<Tj_enso> ensoData = ensoMapper.findTj_ensoInfoByType("nino34_mean");
+        List<Tj_enso> ensoData = ensoMapper.findTj_ensoInfoByType("nino34_asc");
 
         String earliestDate = null;
         String latestDate = null;
@@ -944,12 +953,10 @@ public class EnsoController {
                 latestDate = year + "-" + month;
             }
         }
-
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-M");  // YearMonth 无法直接解析形如 xxxx-x
 
         YearMonth latestYearMonth = YearMonth.parse(latestDate, dateFormatter);
         YearMonth earliestYearMonth = YearMonth.parse(earliestDate, dateFormatter);
-        earliestYearMonth = earliestYearMonth.plusMonths(11);  // 因为每次查询前11个月的数据
 
         Map<String, Object> result = new HashMap<>();
         result.put("earliestDate", earliestYearMonth);

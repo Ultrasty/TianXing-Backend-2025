@@ -13,4 +13,6 @@ public interface Tj_naoMapper {
     Tj_nao findGridByMonth(String year, String month);
 
     List<Tj_nao> findAllByModel(String var_model);
+    List<String> findAvailableYears();
+    List<String> findMonthsByYear(String year);
 }

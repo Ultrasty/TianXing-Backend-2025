@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class Tj_sicService {
@@ -25,5 +26,24 @@ public class Tj_sicService {
 
     public List<Tj_sic> findErrorBoxByYearAndModel(String year){
         return tj_sicmapper.findErrorBoxByYearAndModel(year);
+    }
+    public void createTj_sic(Tj_sic tjSic) {
+        tj_sicmapper.insertTj_sic(tjSic);
+    }
+    // 新增方法实现
+    public List<String> getAvailableYears() {
+        return tj_sicmapper.findDistinctYears();
+    }
+
+    public List<String> getAvailableMonths(String year) {
+        return tj_sicmapper.findDistinctMonthsByYear(year);
+    }
+
+    public List<String> getAvailableDays(String year, String month) {
+        return tj_sicmapper.findDistinctDaysByYearAndMonth(year, month);
+    }
+
+    public Map<String, String> getLatestDate() {
+        return tj_sicmapper.findLatestDate();
     }
 }
