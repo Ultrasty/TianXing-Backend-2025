@@ -151,7 +151,7 @@ public class Tj_sieController {
                 }
             }
         }
-
+        option.put("series",series);
         // 生成动态描述
         int currentYear = Integer.parseInt(year);
         String desc = String.format("%d年%sSIE极小值预测为%.4f，相较于%d年观测%s。预测显示海冰范围将比基准年%s。",
@@ -163,8 +163,8 @@ public class Tj_sieController {
         return_hashmap.put("description", desc);
         
 
-        //option.put("series",series);
-        //return_hashmap.put("option",option);
+        
+        return_hashmap.put("option",option);
         //return_hashmap.put("description","2023年9月SIE极小值预测为4.4133，相较于2022年观测偏低，2023年海冰范围预计将比2022年整体偏少。");
         return return_hashmap;
     }
