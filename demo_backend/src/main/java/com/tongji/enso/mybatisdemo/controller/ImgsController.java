@@ -406,9 +406,9 @@ public class ImgsController {
         List<String> imgPaths1 = new ArrayList<>();
         List<String> imgPaths2 = new ArrayList<>();
         List<String> imgPaths3 = new ArrayList<>();
-        String title1 =year+"年"+month+"月 Nino3.4区SST集合ENSO_ASC";
-        String title2 =year+"年"+month+"月 Nino3.4区SST集合ENSO_MC";
-        String title3 =year+"年"+month+"月 Nino3.4区SST集合ENSO_GTC";
+        String title1 =year+"年"+month+"月 ENSO_ASC 预测结果";
+        String title2 =year+"年"+month+"月 ENSO_MC 预测结果";
+        String title3 =year+"年"+month+"月 ENSO_GTC 预测结果";
         List<String> titles=new ArrayList<>();
         if (!imgsData1.isEmpty() && !imgsData2.isEmpty() && !imgsData3.isEmpty()) {
             String imgSrcData1 = imgsData1.get(0).getData();
