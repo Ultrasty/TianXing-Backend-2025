@@ -80,9 +80,23 @@ public class Tj_sieController {
         HashMap<String, Object> xAxis = new  HashMap<String, Object>();
         xAxis.put("type","category");
         xAxis.put("name","时间");
+        
         String[] xAxis_data={"一月", "二月", "三月", "四月", "五月","六月", "七月", "八月", "九月", "十月", "十一月", "十二月"};
-        xAxis.put("data",xAxis_data);
-        option.put("xAxis",xAxis);
+        List<String> monthList = new ArrayList<>();
+        int currentMonth = monthInt; // 当前起始月份
+
+        for (int i = 0; i < 12; i++) {
+            // 添加当前月份的中文名称（注意：月份值-1对应数组索引）
+            monthList.add(xAxis_data[currentMonth - 1]);
+
+            // 移动到下一个月（达到12月后重置为1月）
+            currentMonth = (currentMonth % 12) + 1;
+        }
+
+        xAxis.put("data", monthList);
+        option.put("xAxis", xAxis);
+
+        
 
         HashMap<String, Object> yAxis = new  HashMap<String, Object>();
         yAxis.put("type","value");
@@ -157,7 +171,7 @@ public class Tj_sieController {
         String desc = String.format("%d年%sSIE极小值预测为%.4f，相较于%d年观测%s。预测显示海冰范围将比基准年%s。",
             currentYear, minMonthName, minValue,
             currentYear-1, 
-            minValue < 4.5 ? "偏低" : "偏高", // 4.5为示例
+            minValue < 4.5 ? "偏低" : "偏高", // 4.5为示例,不符合逻辑!!
             minValue < 5.0 ? "整体偏少" : "整体偏多"); // 5.0为示例
 
         return_hashmap.put("description", desc);
