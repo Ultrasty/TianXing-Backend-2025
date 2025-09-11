@@ -179,31 +179,17 @@ public class Tj_sicController {
     @GetMapping("/initial/SICError")
     @ApiOperation(notes = "SIC预测结果误差可查询日期和最新结果", value = "查询SIC预测结果误差折线图的可查询日期和最新结果")
     public HashMap<String,Object> initialSICerror(){
-        //List<String> yearList=Arrays.asList("2023");
-        //List<String> monthList=Arrays.asList("1");
-        //List<String> dateList=Arrays.asList("1");
-        // 获取可用年份
-        List<String> yearList = tj_sicservice.getAvailableYears();
-        if (yearList.isEmpty()) {
-            return createEmptyResponse("yearList", "monthList", "dateList", "SICerrorInitial");
-        }
-        
-        // 使用最新年份作为默认
-        String defaultYear = yearList.get(0);
-        
-        // 获取该年份下的月份
-        List<String> monthList = tj_sicservice.getAvailableMonths(defaultYear);
-        String defaultMonth = !monthList.isEmpty() ? monthList.get(0) : "01";
+        List<String> yearList=Arrays.asList("2023");
+        List<String> monthList=Arrays.asList("1");
+        List<String> dateList=Arrays.asList("1");
         // 要返回的HashMap
         HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
         return_hashmap.put("yearList",yearList);
         return_hashmap.put("monthList",monthList);
-        return_hashmap.put("dateList",Collections.singletonList("1"));
+        return_hashmap.put("dateList",dateList);
 
-        //Map<String,Object> SICerrorList =findSICErrorByMonth("2023","1");
-        // 获取最新误差结果
-        return_hashmap.put("SICerrorInitial", findSICErrorByMonth(defaultYear, defaultMonth));
-        //return_hashmap.put("SICerrorInitial",SICerrorList);
+        Map<String,Object> SICerrorList =findSICErrorByMonth("2023","1");
+        return_hashmap.put("SICerrorInitial",SICerrorList);
 
         return return_hashmap;
     }
@@ -214,27 +200,17 @@ public class Tj_sicController {
     @GetMapping("/initial/SICErrorBox")
     @ApiOperation(notes = "SIC回报结果误差可查询日期和最新结果", value = "查询SIC回报结果误差箱型图的可查询日期和最新结果")
     public Map<String,Object> initialSICerrorbox(){
-        //List<String> yearList=Arrays.asList("2022");
-        //List<String> monthList=Arrays.asList("1");
-        //List<String> dateList=Arrays.asList("1");
-        // 获取可用年份
-        List<String> yearList = tj_sicservice.getAvailableYears();
-        if (yearList.isEmpty()) {
-            return createEmptyResponse("yearList", "monthList", "dateList", "SICerrorboxInitial");
-        }
-    
-        // 使用最新年份作为默认
-        String defaultYear = yearList.get(0);
+        List<String> yearList=Arrays.asList("2022");
+        List<String> monthList=Arrays.asList("1");
+        List<String> dateList=Arrays.asList("1");
         // 要返回的HashMap
         Map<String, Object> return_hashmap = new HashMap<String, Object>();
         return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList", Collections.singletonList("1"));
-        return_hashmap.put("dateList",Collections.singletonList("1"));
+        return_hashmap.put("monthList",monthList);
+        return_hashmap.put("dateList",dateList);
 
-        //Map<String,Object> SICerrorboxList =findSICErrorBoxByYear("2022");
-        //return_hashmap.put("SICerrorboxInitial",SICerrorboxList);
-         // 获取最新箱型图数据
-        return_hashmap.put("SICerrorboxInitial", findSICErrorBoxByYear(defaultYear));
+        Map<String,Object> SICerrorboxList =findSICErrorBoxByYear("2022");
+        return_hashmap.put("SICerrorboxInitial",SICerrorboxList);
 
         return return_hashmap;
     }
