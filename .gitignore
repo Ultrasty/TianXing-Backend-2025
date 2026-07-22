@@ -1,0 +1,17 @@
+# VS Code
+.vscode/
+
+# Agents & AI Local Configs
+.agents/
+*.agent.log
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Maven
+target/
