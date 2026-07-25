@@ -78,9 +78,7 @@ pnpm dev
 ### 2.2 页面访问与后台登录
 
 * **前端首页地址**：[http://localhost:5173/tianxing/](http://localhost:5173/tianxing/) *(注意末尾带斜杠 `/`)*
-* **进入后台登录页**：
-  * **入口 1**：在主页顶部导航栏最右侧直接点击 **“后台管理”** 按钮；
-  * **入口 2**：在浏览器直接输入地址 [http://localhost:5173/tianxing/#/admin/login](http://localhost:5173/tianxing/#/admin/login)。
+* **进入后台登录页**：在浏览器直接输入后台登录地址 [http://localhost:5173/tianxing/#/admin/login](http://localhost:5173/tianxing/#/admin/login)。
 
 ---
 
