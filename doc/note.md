@@ -1,32 +1,39 @@
-# 天行后台系统团队合作与本地配置指南
+# 天行平台项目团队合作与前后端启动登录指南
 
-为了防止多位合作者因本地数据库密码不同而导致代码冲突或敏感凭据泄露，本工程采用了**环境变量解耦与 Git 本地配置隔离**的设计。
-
----
-
-## 1. 核心设计说明
-
-1. **公共配置解耦**：
-   在 `demo_backend/src/main/resources/application.properties` 中，数据库连接信息使用环境变量占位符：
-   ```properties
-   spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/web?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
-   spring.datasource.username=${DB_USERNAME:root}
-   spring.datasource.password=${DB_PASSWORD:}
-   ```
-   公共仓库中不保存任何硬编码密码。
-
-2. **本地配置隔离**：
-   项目根目录下的 `.gitignore` 已经将 `.vscode/` 目录添加到忽略规则中。因此，每位合作者可以在自己本地的 `.vscode/launch.json` 中配置个人专用的数据库密码和调试环境，且**绝不会被误提交或覆盖别人的配置**。
+为了方便团队合作者快速上手，以及防止不同合作者因本地数据库密码不同而导致代码冲突或敏感凭据泄露，本工程采用了**环境变量解耦与 Git 本地配置隔离**的设计。
 
 ---
 
-## 2. 合作者本地配置与运行步骤
+## 1. 后端启动与配置指南 (`TianXing-Backend-2026`)
 
-### 方式一：VS Code 一键启动/调试（最推荐）
+### 1.1 核心设计与个人数据库密码隔离
+在 `demo_backend/src/main/resources/application.properties` 中，数据库连接信息使用环境变量占位符：
+```properties
+spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/web?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+spring.datasource.username=${DB_USERNAME:root}
+spring.datasource.password=${DB_PASSWORD:}
+```
+项目根目录下的 `.gitignore` 已经屏蔽了 `.vscode/` 目录。每位合作者在自己本地配置的 `.vscode/launch.json` 绝不会被误提交或覆盖别人的设置。
 
-1. 在项目根目录下新建（或编辑）文件 `.vscode/launch.json`；
-2. 填入如下内容（将 `DB_PASSWORD` 修改为您自己本地 MySQL 的真实密码）：
+---
 
+### 1.2 后端启动方式
+
+#### 方式 A：一键启动脚本（全终端通用，最推荐！）
+本工程内置了一键启动脚本，会自动解析您本地 `.vscode/launch.json` 中配置的环境变量（如 `DB_PASSWORD`）并自动启动，无需手动敲长命令或密码。
+
+* **如果在 CMD 命令行（或双击运行）**：
+  ```cmd
+  run.bat
+  ```
+* **如果在 PowerShell 命令行**：
+  ```powershell
+  .\run.ps1
+  # 或同样使用 run.bat
+  ```
+
+#### 方式 B：VS Code 图形界面一键启动
+1. 在项目根目录下新建或编辑文件 `.vscode/launch.json`：
 ```json
 {
     "version": "0.2.0",
@@ -46,38 +53,43 @@
     ]
 }
 ```
+2. 在 VS Code 中按 **`F5`** 键（或选择 `Launch MybatisDemoApplication` 点击 ▶ 播放按钮）启动。
 
-3. **运行方式 A（GUI 界面点击）**：在 VS Code 中打开任意 Java 文件，按 **`F5`** 键（或在左侧【运行与调试】面板中选择 `Launch MybatisDemoApplication` 并点击播放按钮 ▶），即可自动读取本地密码并一键启动后端！
-
-4. **运行方式 B（命令行一键启动脚本 - 补充说明）**：
-   如果您习惯在 PowerShell 命令行中运行，但又不想每次手动输入密码，可以直接在项目根目录下运行工程内置的启动脚本 `run.ps1`：
-   ```powershell
-   .\run.ps1
-   ```
-   *说明：该脚本会自动读取并解析您本地 `.vscode/launch.json` 中配置的环境变量（如 `DB_PASSWORD`），并直接拉起 Spring Boot 后端服务，无需手动敲命令或输入密码。*
+* **后端服务地址**：`http://localhost:8888`
+* **Swagger 接口文档**：`http://localhost:8888/swagger-ui.html`
 
 ---
 
-### 方式二：手动传入环境变量启动
+## 2. 前端启动与登录指南 (`TianXing-Frontend-2026`)
 
-若需要在 CMD 终端或无 GUI 环境中手动启动：
+### 2.1 依赖安装与启动
+在 `TianXing-Frontend-2026` 根目录下执行：
 
-* **Windows CMD 终端**：
-  ```cmd
-  cd demo_backend
-  set JAVA_HOME=C:\Program Files\Java\jdk-21.0.11
-  set DB_PASSWORD=你的本地数据库密码
-  mvnw spring-boot:run
-  ```
+```cmd
+# 1. 安装依赖 (推荐 pnpm，如使用 npm 需带 --legacy-peer-deps 参数)
+pnpm install
+
+# 2. 启动本地开发服务
+pnpm dev
+```
 
 ---
 
-## 3. 后台管理员账户说明
+### 2.2 页面访问与后台登录
+
+* **前端首页地址**：[http://localhost:5173/tianxing/](http://localhost:5173/tianxing/) *(注意末尾带斜杠 `/`)*
+* **进入后台登录页**：
+  * **入口 1**：在主页顶部导航栏最右侧直接点击 **“后台管理”** 按钮；
+  * **入口 2**：在浏览器直接输入地址 [http://localhost:5173/tianxing/#/admin/login](http://localhost:5173/tianxing/#/admin/login)。
+
+---
+
+## 3. 后台管理员登录凭据与账号说明
 
 * **默认管理员账号**：`admin`
-* **默认管理员密码**：`12345678` *(注意：安全机制要求管理员密码长度必须 >= 8 位)*
-* **数据库安全机制**：首次启动服务时，系统会自动在数据库 `admin_user` 表中以 **PBKDF2 哈希加密** 格式安全保存管理员密码。
-* **自定义初始管理员**：若需使用其他初始账号密码，可在 `.vscode/launch.json` 的 `env` 节点中增加以下环境变量：
+* **默认管理员密码**：`12345678` *(安全规则要求密码长度必须 >= 8 位)*
+* **密码哈希存储**：首次启动后端服务时，系统会自动在数据库 `admin_user` 表中以 **PBKDF2 哈希加密** 格式安全保存管理员密码。
+* **自定义初始管理员**：若需在本地改用其他初始账号密码，可在 `.vscode/launch.json` 的 `env` 节点中添加环境变量：
   ```json
   "ADMIN_BOOTSTRAP_USERNAME": "自定义账号",
   "ADMIN_BOOTSTRAP_PASSWORD": "自定义密码(>=8位)"
