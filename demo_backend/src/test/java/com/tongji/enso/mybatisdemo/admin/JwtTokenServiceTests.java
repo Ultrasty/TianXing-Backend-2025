@@ -10,6 +10,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtTokenServiceTests {
     @Test
+    void requiresConfiguredSecretForBothProductionProfileNames() {
+        for (String profile : new String[]{"prod", "production"}) {
+            MockEnvironment environment = new MockEnvironment();
+            environment.setActiveProfiles(profile);
+            assertThatThrownBy(() -> new JwtTokenService("", 7200, environment))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("ADMIN_JWT_SECRET");
+        }
+    }
+
+    @Test
     void reportsExpiredTokensWithStableErrorCode() throws Exception {
         JwtTokenService service = new JwtTokenService(
                 "test-only-expiration-secret-at-least-32-bytes", 1, new MockEnvironment());

@@ -26,7 +26,7 @@ cd demo_backend
 两次测试结果一致：
 
 ```text
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
 
@@ -85,7 +85,7 @@ demo_backend/target/MybatisDemo-0.0.1-SNAPSHOT.jar
 使用生成的 Spring Boot 可执行 Jar、测试作用域 H2 驱动和测试 schema 实际启动服务，启动成功：
 
 ```text
-Started MybatisDemoApplication in 4.543 seconds
+Started MybatisDemoApplication in 5.016 seconds
 ```
 
 运行态 HTTP 检查：
@@ -108,7 +108,7 @@ Started MybatisDemoApplication in 4.543 seconds
 
 - `git diff --check` 通过，仅有 Windows 的 LF/CRLF 提示，无空白错误。
 - 主配置不再包含数据库明文密码或 SSL keystore 明文密码，改为环境变量。
-- JWT 密钥不写入仓库；`prod` profile 缺失密钥时拒绝启动，开发环境缺失时仅生成进程级临时密钥并警告。
+- JWT 密钥不写入仓库；`prod`/`production` profile 缺失密钥时拒绝启动，开发环境缺失时仅生成进程级临时密钥并警告。
 - 测试资源只包含明确标注的测试专用 JWT 密钥。
 - 原仓库基线的 Git 历史中已经出现过数据库和 keystore 明文凭据；即使当前文件已清除，部署负责人仍应立即轮换这些旧凭据，并按团队流程清理历史。
 

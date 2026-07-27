@@ -41,8 +41,8 @@ public class JwtTokenService {
 
     private SecretKey createKey(String configuredSecret, Environment environment) {
         if (configuredSecret == null || configuredSecret.trim().isEmpty()) {
-            if (environment.acceptsProfiles(Profiles.of("prod"))) {
-                throw new IllegalStateException("ADMIN_JWT_SECRET is required in the prod profile");
+            if (environment.acceptsProfiles(Profiles.of("prod", "production"))) {
+                throw new IllegalStateException("ADMIN_JWT_SECRET is required in production profiles");
             }
             byte[] randomSecret = new byte[32];
             new SecureRandom().nextBytes(randomSecret);

@@ -292,7 +292,7 @@ ENSO 示例：
 | `DB_URL` | 默认本机 `tianxing_dev` | JDBC URL |
 | `DB_USERNAME` | 默认 `root` | 数据库账号 |
 | `DB_PASSWORD` | 无安全默认值 | 数据库密码，不提交 Git |
-| `ADMIN_JWT_SECRET` | 生产必填 | 至少 32 字节；生产缺失时拒绝启动 |
+| `ADMIN_JWT_SECRET` | 生产必填 | 至少 32 字节；`prod`/`production` profile 缺失时拒绝启动 |
 | `ADMIN_JWT_EXPIRE_SECONDS` | 默认 `7200` | Token 有效秒数 |
 | `ADMIN_IMPORT_MAX_RECORDS` | 默认 `500` | 单批最大记录数 |
 | `ADMIN_IMPORT_MAX_FILE_SIZE` | 默认 `10MB` | Spring multipart 限制 |
