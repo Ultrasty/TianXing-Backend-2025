@@ -1,0 +1,9 @@
+{
+  "source": "ECMWF",
+  "mode": "REJECT",
+  "category": "SIE",
+  "records": [
+    {"year": "2026", "month": "7", "varModel": "RMSD", "data": [0.1]},
+    {"year": "2026", "month": "7", "varModel": "RMSD", "data": [0.2]}
+  ]
+}
