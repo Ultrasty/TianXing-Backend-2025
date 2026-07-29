@@ -19,6 +19,36 @@
     <select id="findErrorBoxByYearAndModel" resultType="Tj_sic">
         select * from tj_sic where year=#{year} and var_model like '%DA%'
     </select>
+
+    <select id="findErrorAvailableMonths" resultType="map">
+        SELECT year, month
+        FROM tj_sic
+        GROUP BY year, month
+        HAVING COUNT(DISTINCT CASE
+            WHEN var_model IN (
+                CONCAT(year, '_BACC'),
+                CONCAT(year, '_per_BACC'),
+                CONCAT(year, '_RMSE'),
+                CONCAT(year, '_per_RMSE')
+            )
+            THEN var_model
+        END) = 4
+        ORDER BY CAST(year AS UNSIGNED), CAST(month AS UNSIGNED)
+    </select>
+
+    <select id="findErrorBoxAvailableYears" resultType="string">
+        SELECT year
+        FROM tj_sic
+        WHERE var_model IN (
+            'MITgcm(with DA)withBC_RMSE',
+            'withDA_withoutBC_RMSE',
+            'withoutDA_withBC_RMSE',
+            'withoutDA_withoutBC'
+        )
+        GROUP BY year
+        HAVING COUNT(DISTINCT var_model) = 4
+        ORDER BY CAST(year AS UNSIGNED)
+    </select>
      
     
     <!-- 新增日期查询方法 -->

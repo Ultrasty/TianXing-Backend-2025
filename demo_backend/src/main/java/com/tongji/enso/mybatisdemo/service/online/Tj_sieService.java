@@ -28,6 +28,11 @@ public class Tj_sieService {
     public List<Tj_sie> findByYear(String year) {
         return tj_sieMapper.findByYear(year);
     }
+
+    public List<String> findErrorAnalysisAvailableYears() {
+        return tj_sieMapper.findErrorAnalysisAvailableYears();
+    }
+
     //修改开始
     public List<String> findAvailableYears() {
         return tj_sieMapper.selectDistinctYears();

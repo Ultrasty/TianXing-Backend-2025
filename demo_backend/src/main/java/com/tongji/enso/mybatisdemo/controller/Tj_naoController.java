@@ -40,14 +40,25 @@ public class Tj_naoController {
     @GetMapping("/predictionResult/nao")
     @ApiOperation(notes = "查询月份开始六个月的NAO指数预测和观测结果以及文本描述", value = "根据月份查询NAO指数预测和观测结果")
     public Map<String,Object> findNAOPredictionByMonth(@RequestParam String year, @RequestParam String month){
+        int m;
+        try {
+            m = Integer.parseInt(month);
+            Integer.parseInt(year);
+        } catch (NumberFormatException error) {
+            return emptyNAOPredictionResult("日期格式无效");
+        }
+        if (m < 1 || m > 12) {
+            return emptyNAOPredictionResult("日期超出可查询范围");
+        }
 
         Tj_nao preResult = tj_naoservice.findPredictionByMonthAndModel(year,month);
         // 数据库中观测数据按年存储，所以查询月份都是1，查出来的是12个月份的数据
         Obs_nao obsResult = obs_naoservice.findObservationByMonthAndModel(year,"1");
+        if (preResult == null || preResult.getData() == null) {
+            return emptyNAOPredictionResult("该月份暂无NAO指数预测数据");
+        }
 
         Map<String,Object> naoMap = new LinkedHashMap<>();
-        // 将month从String转为int型整数
-        int m = Integer.parseInt(month);
 
         // 处理返回数据格式
         String end_year,end_month;
@@ -106,58 +117,39 @@ public class Tj_naoController {
         naoMap.put("legend",legend);
 
         // 处理预报数据和观测数据
-        double []pre_data = new double[6];
-        double []obs_data = new double[6];
-        // data[]用于临时存放转化后的原始观测数据
-        double []data = null;
-
-        String jsonString;
+        double []pre_data;
+        List<Double> obs_data = new ArrayList<>();
         ObjectMapper objectMapper=new ObjectMapper();
 
         try{
             // 将json形式的预测数据转化为一维数组
-            jsonString = preResult.getData();
-            pre_data = objectMapper.readValue(jsonString,double[].class);
+            pre_data = objectMapper.readValue(preResult.getData(),double[].class);
 
-            // 对于观测数据，需要根据查询月份是否大于7分两类情况处理
-            // 首先将当前查询年份的观测数据转化为一维数组
-            jsonString= obsResult.getData();
-            data = objectMapper.readValue(jsonString,double[].class);
+            for (int i = 0; i < 6; i++) {
+                int monthIndex = m - 1 + i;
+                String observationYear = Integer.toString(
+                        Integer.parseInt(year) + monthIndex / 12
+                );
+                int observationMonth = monthIndex % 12;
+                Obs_nao yearlyObservation = observationYear.equals(year)
+                        ? obsResult
+                        : obs_naoservice.findObservationByMonthAndModel(observationYear, "1");
 
-            // 如果查询月份大于7，则需要用到下一年的数据
-            if(m > 7){
-                int n = m - 7;  // n表示要用到下一年的前n个数据
-                int i;
-                int j = 13 - m;
-                // 把该年从查询月份开始之后的数据放入obs_data[]中
-                for(i = 0; i < j; i++){
-                    obs_data[i] = data[m-1];
-                    m++;
+                if (yearlyObservation == null || yearlyObservation.getData() == null) {
+                    obs_data.add(null);
+                    continue;
                 }
-                // 将年份从String转为int型整数，+1后再转回String型用于查询下一年的数据
-                int y =Integer.parseInt(year);
-                y++;
-                String nextYear=Integer.toString(y);
-                Obs_nao obsResult_nextYear = obs_naoservice.findObservationByMonthAndModel(nextYear,"1");
-                // 将下一年的观测数据转化为一维数组
-                jsonString = obsResult_nextYear.getData();
-                data = objectMapper.readValue(jsonString,double[].class);
-
-                // 把下一年前n月的数据放入obs_data[]中
-                for(j = 0; j < n; j++){
-                    obs_data[i] = data[j];
-                    i++;
-                }
-            }
-            // 如果查询月份小于等于7，则直接从该月份开始将数据逐个放入obs_data[]中
-            else{
-                for(int i = 0; i < 6; i++){
-                    obs_data[i] = data[m-1];
-                    m++;
-                }
+                double[] yearlyData = objectMapper.readValue(
+                        yearlyObservation.getData(),
+                        double[].class
+                );
+                obs_data.add(observationMonth < yearlyData.length
+                        ? yearlyData[observationMonth]
+                        : null);
             }
         }catch (JsonProcessingException e){
-            e.printStackTrace();
+            logger.error("Failed to parse NAO prediction data", e);
+            return emptyNAOPredictionResult("NAO指数预测数据格式异常");
         }
 
         List<Map<String,Object>> series = new ArrayList<>();
@@ -202,20 +194,7 @@ public class Tj_naoController {
      @ApiOperation(notes = "根据年月，返回该时模型起报的6个月格点数据的模块图", value = "根据年月返回格点数据的模块图地址")
      public List<String> findGridByMonth(@RequestParam String year, @RequestParam String month) {
          String data = imgsservice.findNAOImgByMonth(year,month);
-         int index = 0;
-         List<String> naoList=new ArrayList<>();
-
-         for(int i = 0; i<data.length();i++){
-             char c = data.charAt(i);
-             // 已逗号为分隔符分割图片地址
-             if(c == ','){
-                 naoList.add(data.substring(index,i));
-                 index = i + 1;
-             }
-         }
-         naoList.add(data.substring(index));
-
-         return naoList;
+         return splitImagePaths(data);
      }
 
     /**
@@ -229,9 +208,23 @@ public class Tj_naoController {
      @ApiOperation(notes = "初始化预报结果折线图，返回可查询年月", value = "初始化预报结果折线图")
      public Map<String, Object> initialNAOPrediction(){
          logger.info("Received request for /nao/initialize/naoPrediction");
-         List<Obs_nao> naoList = obs_naoservice.findNAOByModel("index_NAO_MCD");
+         List<Tj_nao> naoList = tj_naoservice.findNAOByModel("index_NAO_MCD");
          Map<String, Object> naoMap=new LinkedHashMap<>();
          Map<String,Object> result=new LinkedHashMap<>();
+
+         if (naoList == null || naoList.isEmpty()) {
+             result.put("start_year", null);
+             result.put("start_month", null);
+             result.put("end_year", null);
+             result.put("end_month", null);
+             result.put("option", naoMap);
+             result.put("description", "暂无可用的 NAO 指数预测数据");
+             return result;
+         }
+
+         naoList.sort(Comparator
+                 .comparingInt((Tj_nao item) -> Integer.parseInt(item.getYear()))
+                 .thenComparingInt(item -> Integer.parseInt(item.getMonth())));
 
          // 返回最早可查询年月和最晚可查询年月
          String end_year=naoList.get(naoList.size()-1).getYear();
@@ -248,11 +241,14 @@ public class Tj_naoController {
          //title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", end_year, "7", end_year, "12"));
          // 修改后 (动态月份)
          int startMonth = Integer.parseInt(lastMonth);
-         int endMonth = (startMonth + 5) % 12;
-         endMonth = endMonth == 0 ? 12 : endMonth; // 处理12月边界
+         int endMonthIndex = startMonth - 1 + 5;
+         int endMonth = endMonthIndex % 12 + 1;
+         String forecastEndYear = Integer.toString(
+                 Integer.parseInt(end_year) + endMonthIndex / 12
+         );
          title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", 
                  end_year, lastMonth, 
-                 end_year, String.valueOf(endMonth)));
+                 forecastEndYear, String.valueOf(endMonth)));
          title.put("left","center");
          naoMap.put("title",title);
          Map<String, Object> tooltip=new LinkedHashMap<>();
@@ -262,7 +258,7 @@ public class Tj_naoController {
          xAxis.put("name","时间");
          List<String> month_data=new ArrayList<>();
          String[] chinese_month = {"一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"};
-         int temp = 7;
+         int temp = startMonth;
          for(int i=0; i<6; i++) {
              month_data.add(chinese_month[temp - 1]);
              temp++;
@@ -298,23 +294,43 @@ public class Tj_naoController {
          naoMap.put("legend",legend);
 
          // 按最晚可查询年月查询预报数据和观测数据
-         Tj_nao preResult = tj_naoservice.findPredictionByMonthAndModel(end_year,"7");
+         Tj_nao preResult = tj_naoservice.findPredictionByMonthAndModel(end_year,lastMonth);
          Obs_nao obsResult = obs_naoservice.findObservationByMonthAndModel(end_year,"1");
          String jsonString;
          ObjectMapper objectMapper=new ObjectMapper();
-         double []pre_data = new double[6];
-         double []obs_data = new double[6];
-         double []data = null;
+         double []pre_data = new double[0];
+         List<Double> obs_data = new ArrayList<>();
          try{
-             jsonString = preResult.getData();
-             pre_data = objectMapper.readValue(jsonString,double[].class);
-             jsonString = obsResult.getData();
-             data=objectMapper.readValue(jsonString,double[].class);
+             if (preResult != null && preResult.getData() != null) {
+                 jsonString = preResult.getData();
+                 pre_data = objectMapper.readValue(jsonString,double[].class);
+             }
+
              for(int i = 0; i < 6; i++){
-                 obs_data[i] = data[6 + i];
+                 int monthIndex = startMonth - 1 + i;
+                 String observationYear = Integer.toString(
+                         Integer.parseInt(end_year) + monthIndex / 12
+                 );
+                 int observationMonth = monthIndex % 12;
+                 Obs_nao yearlyObservation = observationYear.equals(end_year)
+                         ? obsResult
+                         : obs_naoservice.findObservationByMonthAndModel(observationYear,"1");
+
+                 if (yearlyObservation == null || yearlyObservation.getData() == null) {
+                     obs_data.add(null);
+                     continue;
+                 }
+
+                 double[] yearlyData = objectMapper.readValue(
+                         yearlyObservation.getData(),
+                         double[].class
+                 );
+                 obs_data.add(observationMonth < yearlyData.length
+                         ? yearlyData[observationMonth]
+                         : null);
              }
          }catch (JsonProcessingException e){
-             e.printStackTrace();
+             logger.error("Failed to parse NAO initialization data", e);
          }
 
          List<Map<String,Object>> series = new ArrayList<>();
@@ -344,8 +360,19 @@ public class Tj_naoController {
     @GetMapping("/initialize/naoGrid")
     @ApiOperation(notes = "初始化预报结果折模块图，返回可查询年月", value = "初始化预报结果模块图")
      public Map<String, Object> initialNAOGrid(){
-        List<Imgs> imgsList = imgsservice.findAllByType("NAO");
-        Map<String, Object> naoMap=new HashMap<>();
+        List<Imgs> imgsList = new ArrayList<>(imgsservice.findAllByType("NAO"));
+        Map<String, Object> naoMap=new LinkedHashMap<>();
+        imgsList.removeIf(item -> item.getYear() == null
+                || item.getMonth() == null
+                || item.getData() == null
+                || item.getData().isEmpty());
+        imgsList.sort(Comparator
+                .comparingInt((Imgs item) -> Integer.parseInt(item.getYear()))
+                .thenComparingInt(item -> Integer.parseInt(item.getMonth())));
+        if (imgsList.isEmpty()) {
+            naoMap.put("data", Collections.emptyList());
+            return naoMap;
+        }
 
         // 返回最早查询年月和最晚查询年月
         String end_year=imgsList.get(imgsList.size()-1).getYear();
@@ -357,18 +384,7 @@ public class Tj_naoController {
 
         // 按最晚查询年月查询图片地址
         String data = imgsservice.findNAOImgByMonth(end_year,end_month);
-        int index = 0;
-        List<String> naoList=new ArrayList<>();
-        for(int i = 0; i<data.length();i++){
-            char c = data.charAt(i);
-            // 以逗号为分隔符分割图片地址
-            if(c == ','){
-                naoList.add(data.substring(index,i));
-                index = i + 1;
-            }
-        }
-        naoList.add(data.substring(index));
-        naoMap.put("data",naoList);
+        naoMap.put("data", splitImagePaths(data));
 
         return naoMap;
      }
@@ -381,8 +397,19 @@ public class Tj_naoController {
     @GetMapping("/initialize/naoCORR")
     @ApiOperation(notes = "初始化预测结果误差分布图，返回可查询年月", value = "初始化预测结果误差分布图")
      public Map<String, Object> initialNAOCORR(){
-         List<Imgs> imgsList = imgsservice.findAllByType("NAO_CORR");
-         Map<String, Object> naoMap=new HashMap<>();
+         List<Imgs> imgsList = new ArrayList<>(imgsservice.findAllByType("NAO_CORR"));
+         Map<String, Object> naoMap=new LinkedHashMap<>();
+         imgsList.removeIf(item -> item.getYear() == null
+                 || item.getMonth() == null
+                 || item.getData() == null
+                 || item.getData().isEmpty());
+         imgsList.sort(Comparator
+                 .comparingInt((Imgs item) -> Integer.parseInt(item.getYear()))
+                 .thenComparingInt(item -> Integer.parseInt(item.getMonth())));
+         if (imgsList.isEmpty()) {
+             naoMap.put("data", null);
+             return naoMap;
+         }
 
         // 返回最早查询年月和最晚查询年月
         String end_year=imgsList.get(imgsList.size()-1).getYear();
@@ -398,4 +425,24 @@ public class Tj_naoController {
 
         return naoMap;
      }
+
+    private Map<String, Object> emptyNAOPredictionResult(String description) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("option", Collections.emptyMap());
+        result.put("description", description);
+        return result;
+    }
+
+    private List<String> splitImagePaths(String data) {
+        if (data == null || data.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> paths = new ArrayList<>();
+        for (String item : data.split(",")) {
+            if (!item.trim().isEmpty()) {
+                paths.add(item.trim());
+            }
+        }
+        return paths;
+    }
 }

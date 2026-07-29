@@ -16,6 +16,15 @@
     <select id="findByYear" resultType="Tj_sie">
         select * from tj_sie where year=#{year}
     </select>
+
+    <select id="findErrorAnalysisAvailableYears" resultType="string">
+        SELECT year
+        FROM tj_sie
+        WHERE var_model IN ('RMSD', 'BAIS', 'VAR', 'CORRELATION', 'OBS_STD', 'PRE_STD')
+        GROUP BY year
+        HAVING COUNT(DISTINCT var_model) = 6
+        ORDER BY CAST(year AS UNSIGNED)
+    </select>
     <!-- 新增SQL -->
     <select id="selectDistinctYears" resultType="string">
         SELECT DISTINCT year FROM tj_sie ORDER BY year DESC

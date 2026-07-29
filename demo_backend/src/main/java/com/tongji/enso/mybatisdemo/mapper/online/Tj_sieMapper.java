@@ -27,6 +27,7 @@ public interface Tj_sieMapper {
 
 
     List<Tj_sie> findByYear(String year);
+    List<String> findErrorAnalysisAvailableYears();
     //新增开始
     List<String> selectDistinctYears();
     List<String> selectDistinctMonths();
