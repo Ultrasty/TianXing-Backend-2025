@@ -156,4 +156,16 @@ ADMIN_IMPORT_MAX_RECORDS=500
 ADMIN_IMPORT_MAX_FILE_SIZE=10MB
 ```
 
-先执行 `V001__create_admin_user.sql`，用 `scripts/generate-bcrypt-hash.ps1` 生成 BCrypt 哈希并创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。
+先在 PowerShell 中进入 MySQL 客户端：
+
+```powershell
+mysql -u root -p web
+```
+
+再在出现的 `mysql>` 提示符中执行迁移（`SOURCE` 不是 PowerShell 命令）：
+
+```sql
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V001__create_admin_user.sql;
+```
+
+然后在仓库根目录运行 `scripts/generate-bcrypt-hash.ps1`，用输出的哈希创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。
