@@ -2,13 +2,15 @@ package com.tongji.enso.mybatisdemo.mapper.online;
 
 import com.tongji.enso.mybatisdemo.entity.online.Imgs;
 
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import org.apache.ibatis.annotations.Select;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.List;
 @Repository
 public interface ImgsMapper {
 
@@ -35,6 +37,15 @@ public interface ImgsMapper {
     @Select("SELECT * FROM imgs WHERE type = #{type}")
     List<Imgs> findImgsInfoByType(@RequestParam("type") String type);
 
+    @Select("SELECT COUNT(*) FROM imgs WHERE year = #{year} AND month = #{month} AND day = #{day} AND type = #{type}")
+    int countByYearMonthDayType(@Param("year") String year, @Param("month") String month, @Param("day") String day, @Param("type") String type);
+
+    @Select("SELECT COUNT(*) FROM imgs WHERE year = #{year} AND month = #{month} AND type = #{type}")
+    int countByYearMonthType(@Param("year") String year, @Param("month") String month, @Param("type") String type);
+
+    @Insert("INSERT INTO imgs (year, month, day, type, data) VALUES (#{year}, #{month}, #{day}, #{type}, #{data})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insertImgs(Imgs imgs);
 
 
 }
