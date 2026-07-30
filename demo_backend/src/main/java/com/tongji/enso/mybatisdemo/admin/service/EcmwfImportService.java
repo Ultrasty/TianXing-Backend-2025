@@ -104,7 +104,7 @@ public class EcmwfImportService {
     private List<String> buildCommand(EcmwfImportRequest request, Path output) {
         List<String> command = new ArrayList<String>();
         command.add(pythonExecutable);
-        command.add(scriptPath);
+        command.add(resolveScriptPath(scriptPath));
         command.add("--output");
         command.add(output.toAbsolutePath().toString());
         command.add("--time");
@@ -137,6 +137,18 @@ public class EcmwfImportService {
             command.add(request.getStream().trim());
         }
         return command;
+    }
+
+    private String resolveScriptPath(String configuredPath) {
+        Path path = Path.of(configuredPath);
+        if (Files.exists(path)) {
+            return path.toAbsolutePath().toString();
+        }
+        Path demoBackendPath = Path.of("demo_backend", configuredPath);
+        if (Files.exists(demoBackendPath)) {
+            return demoBackendPath.toAbsolutePath().toString();
+        }
+        return path.toAbsolutePath().toString();
     }
 
     private void validate(EcmwfImportRequest request) {

@@ -56,12 +56,14 @@ public class ForecastDataRepository {
         pageParams.add(pageSize);
         pageParams.add((page - 1) * pageSize);
         List<Map<String, Object>> items = jdbcTemplate.queryForList(
-                "SELECT `id`, `year`, `month`, `var_model`, " +
-                        "LEFT(CAST(`data` AS CHAR), 300) AS `data_preview`, " +
-                        "CHAR_LENGTH(CAST(`data` AS CHAR)) AS `data_length` " +
-                        "FROM `" + table + "`" + where +
+                "SELECT `t`.`id`, `t`.`year`, `t`.`month`, `t`.`var_model`, " +
+                        "LEFT(CAST(`t`.`data` AS CHAR), 300) AS `data_preview`, " +
+                        "CHAR_LENGTH(CAST(`t`.`data` AS CHAR)) AS `data_length` " +
+                        "FROM `" + table + "` `t` " +
+                        "JOIN (SELECT `id` FROM `" + table + "`" + where +
                         " ORDER BY CAST(`year` AS UNSIGNED) DESC, CAST(`month` AS UNSIGNED) DESC, `id` DESC " +
-                        "LIMIT ? OFFSET ?",
+                        "LIMIT ? OFFSET ?) `page_ids` ON `t`.`id` = `page_ids`.`id` " +
+                        "ORDER BY CAST(`t`.`year` AS UNSIGNED) DESC, CAST(`t`.`month` AS UNSIGNED) DESC, `t`.`id` DESC",
                 pageParams.toArray()
         );
 

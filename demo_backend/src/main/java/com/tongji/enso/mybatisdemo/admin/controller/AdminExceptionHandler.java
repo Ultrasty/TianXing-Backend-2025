@@ -21,4 +21,13 @@ public class AdminExceptionHandler {
         body.put("message", ex.getReason() == null ? status.getReasonPhrase() : ex.getReason());
         return ResponseEntity.status(status).body(body);
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        Map<String, Object> body = new LinkedHashMap<String, Object>();
+        body.put("status", 500);
+        body.put("error", "Internal Server Error");
+        body.put("message", ex.getMessage() == null ? ex.getClass().getName() : ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
 }
