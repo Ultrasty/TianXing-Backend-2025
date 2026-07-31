@@ -24,6 +24,7 @@ import java.util.*;
 @RequestMapping("/nao")
 public class Tj_naoController {
     private static final Logger logger = LoggerFactory.getLogger(Tj_naoController.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private Tj_naoService tj_naoservice;
@@ -208,15 +209,20 @@ public class Tj_naoController {
      @ApiOperation(notes = "初始化预报结果折线图，返回可查询年月", value = "初始化预报结果折线图")
      public Map<String, Object> initialNAOPrediction(){
          logger.info("Received request for /nao/initialize/naoPrediction");
-         List<Tj_nao> naoList = tj_naoservice.findNAOByModel("index_NAO_MCD");
+         List<Tj_nao> queriedItems = tj_naoservice.findNAOByModel("index_NAO_MCD");
+         List<Tj_nao> naoList = queriedItems == null
+                 ? new ArrayList<>()
+                 : new ArrayList<>(queriedItems);
+         naoList.removeIf(item -> !hasValidNaoPrediction(item));
          Map<String, Object> naoMap=new LinkedHashMap<>();
          Map<String,Object> result=new LinkedHashMap<>();
 
-         if (naoList == null || naoList.isEmpty()) {
+         if (naoList.isEmpty()) {
              result.put("start_year", null);
              result.put("start_month", null);
              result.put("end_year", null);
              result.put("end_month", null);
+             result.put("availableMonths", Collections.emptyList());
              result.put("option", naoMap);
              result.put("description", "暂无可用的 NAO 指数预测数据");
              return result;
@@ -235,6 +241,7 @@ public class Tj_naoController {
          // 修改后 (动态获取)
          String lastMonth = naoList.get(naoList.size()-1).getMonth();
          result.put("end_month", lastMonth);
+         result.put("availableMonths", buildAvailableMonthsFromNao(naoList));
 
          // 处理返回数据格式
          Map<String, Object> title=new LinkedHashMap<>();
@@ -371,6 +378,7 @@ public class Tj_naoController {
                 .thenComparingInt(item -> Integer.parseInt(item.getMonth())));
         if (imgsList.isEmpty()) {
             naoMap.put("data", Collections.emptyList());
+            naoMap.put("availableMonths", Collections.emptyList());
             return naoMap;
         }
 
@@ -381,6 +389,7 @@ public class Tj_naoController {
         naoMap.put("start_month",imgsList.get(0).getMonth());
         naoMap.put("end_year",end_year);
         naoMap.put("end_month",end_month);
+        naoMap.put("availableMonths", buildAvailableMonthsFromImages(imgsList));
 
         // 按最晚查询年月查询图片地址
         String data = imgsservice.findNAOImgByMonth(end_year,end_month);
@@ -408,6 +417,7 @@ public class Tj_naoController {
                  .thenComparingInt(item -> Integer.parseInt(item.getMonth())));
          if (imgsList.isEmpty()) {
              naoMap.put("data", null);
+             naoMap.put("availableMonths", Collections.emptyList());
              return naoMap;
          }
 
@@ -418,6 +428,7 @@ public class Tj_naoController {
         naoMap.put("start_month",imgsList.get(0).getMonth());
         naoMap.put("end_year",end_year);
         naoMap.put("end_month",end_month);
+        naoMap.put("availableMonths", buildAvailableMonthsFromImages(imgsList));
 
         // 按最晚查询年月查询图片地址
         String data=imgsservice.findNAOCORRImgByMonth(end_year,end_month);
@@ -425,6 +436,64 @@ public class Tj_naoController {
 
         return naoMap;
      }
+
+    private List<Map<String, Object>> buildAvailableMonthsFromNao(List<Tj_nao> items) {
+        Map<String, Map<String, Object>> uniqueMonths = new LinkedHashMap<>();
+        for (Tj_nao item : items) {
+            if (!hasValidNaoPrediction(item)) {
+                continue;
+            }
+            addAvailableMonth(uniqueMonths, item.getYear(), item.getMonth());
+        }
+        return new ArrayList<>(uniqueMonths.values());
+    }
+
+    private boolean hasValidNaoPrediction(Tj_nao item) {
+        if (item == null || item.getData() == null || item.getData().trim().isEmpty()) {
+            return false;
+        }
+        try {
+            int month = Integer.parseInt(item.getMonth());
+            Integer.parseInt(item.getYear());
+            return month >= 1
+                    && month <= 12
+                    && OBJECT_MAPPER.readValue(item.getData(), double[].class).length > 0;
+        } catch (NumberFormatException | JsonProcessingException ignored) {
+            return false;
+        }
+    }
+
+    private List<Map<String, Object>> buildAvailableMonthsFromImages(List<Imgs> items) {
+        Map<String, Map<String, Object>> uniqueMonths = new LinkedHashMap<>();
+        for (Imgs item : items) {
+            if (item == null || item.getData() == null || item.getData().trim().isEmpty()) {
+                continue;
+            }
+            addAvailableMonth(uniqueMonths, item.getYear(), item.getMonth());
+        }
+        return new ArrayList<>(uniqueMonths.values());
+    }
+
+    private void addAvailableMonth(
+            Map<String, Map<String, Object>> uniqueMonths,
+            String yearValue,
+            String monthValue
+    ) {
+        try {
+            int year = Integer.parseInt(yearValue);
+            int month = Integer.parseInt(monthValue);
+            if (month < 1 || month > 12) {
+                return;
+            }
+            String key = year + "-" + month;
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("year", year);
+            entry.put("month", month);
+            uniqueMonths.putIfAbsent(key, entry);
+        } catch (NumberFormatException ignored) {
+            // 跳过不能用于月份选择器的历史脏数据。
+        }
+    }
 
     private Map<String, Object> emptyNAOPredictionResult(String description) {
         Map<String, Object> result = new LinkedHashMap<>();
