@@ -25,12 +25,15 @@ public class EvaluationAdminController {
     private final EvaluationService evaluationService;
     private final EvaluationImportService importService;
     private final EvaluationMetadataService metadataService;
+    private final EcmwfPreviewService ecmwfPreviewService;
 
     public EvaluationAdminController(EvaluationService evaluationService, EvaluationImportService importService,
-                                     EvaluationMetadataService metadataService) {
+                                     EvaluationMetadataService metadataService,
+                                     EcmwfPreviewService ecmwfPreviewService) {
         this.evaluationService = evaluationService;
         this.importService = importService;
         this.metadataService = metadataService;
+        this.ecmwfPreviewService = ecmwfPreviewService;
     }
 
     @GetMapping("/meta")
@@ -93,5 +96,10 @@ public class EvaluationAdminController {
     public AdminApiResponse<EvaluationBatchImportResult> batchImport(
             @RequestBody EvaluationBatchImportRequest request) {
         return AdminApiResponse.success(importService.importBatch(request));
+    }
+
+    @PostMapping(value = "/ecmwf/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public AdminApiResponse<Map<String, Object>> previewFromEcmwf(@RequestBody EcmwfPreviewRequest request) {
+        return AdminApiResponse.success(ecmwfPreviewService.preview(request));
     }
 }

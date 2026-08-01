@@ -1,0 +1,3 @@
+ecmwf-opendata>=0.3.26,<1
+eccodes>=2.38,<3
+numpy>=1.24,<3
