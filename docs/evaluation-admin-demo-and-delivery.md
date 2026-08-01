@@ -2,46 +2,114 @@
 
 ## 1. 一次性准备
 
-### MySQL 8
+### 先分清两个命令窗口
 
-在管理员 PowerShell 中启动已安装的服务：
+本文后续会明确标注命令应该在哪里运行：
+
+- 看到 `PS C:\...>`：这是 **PowerShell**，只能运行 PowerShell 命令。
+- 看到 `mysql>`：这是 **MySQL 客户端**，只能运行 `USE`、`SELECT`、`INSERT`、`SOURCE` 等 SQL。
+
+不要把示例中的“你的密码”“粘贴哈希”等说明文字原样当成密码使用。
+
+### MySQL 8：启动并检查数据
+
+#### 第一步：在管理员 PowerShell 中运行
+
 
 ```powershell
 Start-Service MySQL80
-& 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe' -u root -p
+Get-Service MySQL80
+
+& 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe' `
+  -h 127.0.0.1 -P 3306 -u root -p
 ```
 
-在 `mysql>` 中执行（若 `web` 已有完整业务数据，跳过备份导入）：
+输入 MySQL root 密码后，提示符会变成 `mysql>`。
+
+#### 第二步：仅在 `mysql>` 中运行
+
+先检查 `web` 数据库是否已经导入：
+
+```sql
+SHOW DATABASES LIKE 'web';
+USE web;
+SHOW TABLES;
+```
+
+如果能看到 `obs_enso`、`tj_nao`、`tj_sic` 和 `tj_sie`，说明业务数据已经导入，**不要再次导入大 SQL**。
+
+只有全新数据库、完全看不到上述表时，才在 `mysql>` 中运行：
 
 ```sql
 CREATE DATABASE IF NOT EXISTS web CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE web;
 SOURCE C:/VScodework/TianXingProject/three_in_one_deploy_package_20251023/mysql_backup_20251023.sql;
-SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V001__create_admin_user.sql;
 ```
 
-执行 V002 前，先单独运行其中四段重复检查；只有四段都返回空结果时，才执行四条 `ALTER TABLE`，或直接 `SOURCE` 完整文件：
+### 检查两个数据库升级脚本
+
+这两个文件不是软件版本：
+
+- `V001`：创建管理员表 `admin_user`。
+- `V002`：给四类评估表增加唯一索引，防止重复发布。
+
+继续在 `mysql>` 中运行：
 
 ```sql
+SHOW TABLES LIKE 'admin_user';
+
+SELECT DISTINCT TABLE_NAME, INDEX_NAME
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA='web'
+  AND INDEX_NAME IN (
+    'uk_obs_enso_year',
+    'uk_tj_nao_year_month_model',
+    'uk_tj_sic_date_model',
+    'uk_tj_sie_year_month_model'
+  );
+```
+
+按结果处理：
+
+- 能看到 `admin_user`：V001 已完成，不要重复执行。
+- 能看到 4 个不同的唯一索引名：V002 已完成，不要重复执行。
+- 缺少 `admin_user`：在 `mysql>` 运行下面的 V001。
+- 四个索引全部缺少：确认使用的是原始业务备份后，在 `mysql>` 运行下面的 V002。
+- 只存在部分索引：停止操作，先检查数据库，不要重复运行整个 V002。
+
+```sql
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V001__create_admin_user.sql;
 SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V002__add_evaluation_natural_key_indexes.sql;
 ```
 
-在仓库根目录生成管理员 BCrypt 哈希：
+### 创建本地演示管理员
+
+先在 `mysql>` 输入 `EXIT;`，回到 `PS C:\...>`。然后在 **PowerShell** 中运行：
 
 ```powershell
 cd C:\VScodework\TianXingProject\TianXing-Backend-2026
-$env:ADMIN_PASSWORD='换成至少12位的演示密码'
 .\scripts\generate-bcrypt-hash.ps1
-Remove-Item Env:ADMIN_PASSWORD
 ```
 
-复制输出的哈希，在 MySQL 中创建账号（不要把明文密码或真实哈希提交到 Git）：
+脚本会隐藏输入并要求确认密码。复制最后输出的 `$2a$...` 哈希，然后重新进入 MySQL，并且直接选中 `web` 数据库：
+
+```powershell
+& 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe' `
+  -h 127.0.0.1 -P 3306 -u root -p web
+```
+
+看到 `mysql>` 后运行下面的 SQL。必须把 `这里替换成刚才输出的完整哈希` 替换掉，不要原样复制该说明文字：
 
 ```sql
 INSERT INTO admin_user(username, password_hash, enabled)
-VALUES ('admin', '粘贴BCrypt哈希', 1)
+VALUES ('admin', '这里替换成刚才输出的完整哈希', 1)
 ON DUPLICATE KEY UPDATE password_hash=VALUES(password_hash), enabled=1;
+
+SELECT id, username, enabled FROM admin_user;
+EXIT;
 ```
+
+能看到 `admin` 且 `enabled=1`，数据库准备即完成。明文密码和真实哈希都不要提交到 Git；本地演示密码不要用于云端。
 
 ### ECMWF Python 环境
 
@@ -61,8 +129,9 @@ ECMWF Open Data 是滚动实时数据，通常只保留最近约 2–3 天的起
 cd C:\VScodework\TianXingProject\TianXing-Backend-2026\demo_backend
 $env:DB_URL='jdbc:mysql://127.0.0.1:3306/web?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC'
 $env:DB_USERNAME='root'
-$env:DB_PASSWORD='你的MySQL密码'
-$env:ADMIN_JWT_SECRET='换成至少32字节且不提交到Git的联调密钥'
+$mysqlPassword = Read-Host '输入本机 MySQL root 密码' -AsSecureString
+$env:DB_PASSWORD=[System.Net.NetworkCredential]::new('', $mysqlPassword).Password
+$env:ADMIN_JWT_SECRET=[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 $env:ECMWF_PYTHON=(Resolve-Path .\.venv\Scripts\python.exe).Path
 .\mvnw.cmd spring-boot:run
 ```
@@ -119,7 +188,7 @@ pnpm build
 PR 应包含：
 
 - 后端分支 `feat/evaluation-admin-backend`：鉴权、CRUD/导入、ECMWF 获取服务与脚本、迁移、测试、API 和本演示文档。
-- 前端分支 `feat/evaluation-admin-integration`：登录、Token/401、真实 API 封装、四类动态表单、CRUD/导入/ECMWF UI、路由守卫和环境变量示例。
+- 前端分支 `XuYichen-2.7-2.9`：登录、Token/401、真实 API 封装、四类动态表单、CRUD/导入/ECMWF UI、路由守卫和环境变量示例。
 - 测试证据：后端单元/集成测试结果、前端生产构建结果、真实 MySQL CRUD/导入记录、一次实际 ECMWF 下载的 metadata 截图或 JSON 摘要。
 
 不要提交 `.env.local`、数据库密码、JWT 密钥、管理员明文密码、`.venv`、MySQL 数据目录或运行日志。建议前后端各建一个 PR，评审通过后再合入主分支。
