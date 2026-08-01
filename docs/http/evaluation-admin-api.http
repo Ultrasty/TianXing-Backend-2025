@@ -108,7 +108,28 @@ Content-Type: application/json
 < ../../examples/manual-evaluation-import.json
 --EvaluationBoundary--
 
-### ECMWF 规范化 JSON 批量导入
+### ECMWF Open Data 真实下载、GRIB 解析和标准记录预览
+POST {{baseUrl}}/admin/evaluations/ecmwf/preview
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "category": "SIE",
+  "year": "2026",
+  "month": "8",
+  "varModel": "RMSD",
+  "time": 0,
+  "step": 24,
+  "param": "2t",
+  "levtype": "sfc",
+  "provider": "ecmwf",
+  "model": "ifs",
+  "forecastType": "fc",
+  "reducer": "MEAN",
+  "maxPoints": 200
+}
+
+### ECMWF 标准记录批量入库
 POST {{baseUrl}}/admin/evaluations/import/batch
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json

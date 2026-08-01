@@ -18,6 +18,7 @@ Authorization: Bearer <JWT>
 | PUT | `/admin/evaluations/{category}/{id}` | 更新完整记录 | 200 |
 | DELETE | `/admin/evaluations/{category}/{id}` | 删除记录 | 200 |
 | POST | `/admin/evaluations/import/manual` | 手动 JSON 文件导入 | 200 |
+| POST | `/admin/evaluations/ecmwf/preview` | 下载并解析 ECMWF Open Data，生成待入库记录 | 200 |
 | POST | `/admin/evaluations/import/batch` | ECMWF 标准 JSON 入库 | 200 |
 
 ## 登录
@@ -87,7 +88,36 @@ Content-Type: multipart/form-data
 }
 ```
 
-## ECMWF 入库
+## ECMWF 真实获取、转换与入库
+
+第一步从 Open Data 下载 GRIB2，解析字段并生成标准记录预览：
+
+```http
+POST /admin/evaluations/ecmwf/preview
+Content-Type: application/json
+```
+
+```json
+{
+  "category": "SIE",
+  "year": "2026",
+  "month": "8",
+  "varModel": "RMSD",
+  "time": 0,
+  "step": 24,
+  "param": "2t",
+  "levtype": "sfc",
+  "model": "ifs",
+  "provider": "ecmwf",
+  "forecastType": "fc",
+  "reducer": "MEAN",
+  "maxPoints": 200
+}
+```
+
+`date` 可留空以获取最新起报；`reducer` 支持 `MEAN`、`ROW_MEAN` 和 `SAMPLE`。服务会优先使用指定源，ECMWF 主站发生瞬时网络错误时依次尝试 AWS、Google 和 Azure 镜像。成功响应的 `data.record` 可直接用于下一步批量入库，`data.metadata` 会记录实际数据源、模型、起报时间、网格数和字段单位。
+
+第二步确认预览后，以 UPSERT 方式写入数据库：
 
 ```http
 POST /admin/evaluations/import/batch
@@ -108,6 +138,8 @@ Content-Type: application/json
 - `REJECT`：任何非法或重复记录都会使整批零写入。
 - `UPSERT`：存在则更新，不存在则新增；任一写入失败时整批回滚。
 - 单批默认最多 500 条；ECMWF 入口的 `source` 必须为 `ECMWF`。
+
+注意：这里完成的是“真实 Open Data 下载 + GRIB 字段解析 + 数组归约 + 标准记录入库”。空间平均或抽样值不自动等同于 RMSD、BACC、相关系数等科研检验指标；正式科研结果应由带观测数据和领域公式的上游评估程序生成，再复用批量入库接口。
 
 成功结果：
 
@@ -154,6 +186,17 @@ ADMIN_JWT_SECRET
 ADMIN_JWT_EXPIRE_SECONDS=7200
 ADMIN_IMPORT_MAX_RECORDS=500
 ADMIN_IMPORT_MAX_FILE_SIZE=10MB
+ECMWF_PYTHON=python
+ECMWF_SCRIPT_PATH=scripts/ecmwf_evaluation_fetch.py
+ECMWF_TIMEOUT_SECONDS=240
+ECMWF_MAX_OUTPUT_BYTES=5242880
+```
+
+ECMWF Python 依赖安装：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r scripts\requirements-ecmwf.txt
 ```
 
 先在 PowerShell 中进入 MySQL 客户端：
