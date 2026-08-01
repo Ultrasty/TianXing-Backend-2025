@@ -10,12 +10,15 @@ public final class AdminPasswordHashTool {
     }
 
     public static void main(String[] args) {
+        String environmentPassword = System.getenv("ADMIN_PASSWORD");
         Console console = System.console();
-        if (console == null) {
-            throw new IllegalStateException("A real terminal is required so the password is not echoed");
+        if (console == null && (environmentPassword == null || environmentPassword.isEmpty())) {
+            throw new IllegalStateException("A real terminal or ADMIN_PASSWORD environment variable is required");
         }
-        char[] first = console.readPassword("Admin password: ");
-        char[] second = console.readPassword("Confirm password: ");
+        char[] first = environmentPassword == null ? console.readPassword("Admin password: ")
+                : environmentPassword.toCharArray();
+        char[] second = environmentPassword == null ? console.readPassword("Confirm password: ")
+                : environmentPassword.toCharArray();
         try {
             if (first == null || first.length < 12) {
                 throw new IllegalArgumentException("Password must contain at least 12 characters");
