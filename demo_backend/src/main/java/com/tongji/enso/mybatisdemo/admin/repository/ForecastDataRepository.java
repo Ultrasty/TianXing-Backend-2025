@@ -107,6 +107,18 @@ public class ForecastDataRepository {
         return count != null && count > 0;
     }
 
+    public Map<String, Object> findByNaturalKey(ForecastDataset dataset,
+                                                String year,
+                                                String month,
+                                                String varModel) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT `id`, `year`, `month`, `var_model`, `data` FROM `" + dataset.getTableName() + "` " +
+                        "WHERE `year` = ? AND `month` = ? AND `var_model` = ? LIMIT 1",
+                year, month, varModel
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     public long insert(ForecastDataset dataset,
                        String year,
                        String month,

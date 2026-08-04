@@ -137,18 +137,30 @@ public class ForecastDataService {
         }
     }
 
-    /** ECMWF 导入服务使用同一校验和入库入口。 */
+    /** ECMWF 导入服务使用同一校验和入库入口。支持传入 overwrite 二次确认覆盖 */
     public Map<String, Object> createFromDecodedJson(String dataset,
                                                       String year,
                                                       String month,
                                                       String varModel,
-                                                      String dataJson) {
+                                                      String dataJson,
+                                                      Boolean overwrite) {
         ForecastDataRequest request = new ForecastDataRequest();
         request.setDataset(dataset);
         request.setYear(year);
         request.setMonth(month);
         request.setVarModel(varModel);
         request.setData(dataJson);
+
+        NormalizedForecastData normalized = validateAndNormalize(request);
+        Map<String, Object> existing = repository.findByNaturalKey(normalized.dataset, normalized.year, normalized.month, normalized.varModel);
+        if (existing != null) {
+            if (Boolean.TRUE.equals(overwrite)) {
+                long existingId = ((Number) existing.get("id")).longValue();
+                return update(existingId, request);
+            } else {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "相同 year/month/var_model 的预报数据已存在，请确认是否覆盖");
+            }
+        }
         return create(request);
     }
 

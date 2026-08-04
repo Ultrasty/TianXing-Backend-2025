@@ -74,12 +74,15 @@ public class EcmwfImportService {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ECMWF 解析脚本没有返回合法 data 数组");
             }
 
+            JsonNode processedNode = processAndValidateDataNode(dataNode, request);
+
             Map<String, Object> inserted = forecastDataService.createFromDecodedJson(
                     request.getDataset(),
                     request.getYear(),
                     request.getMonth(),
                     request.getVarModel(),
-                    objectMapper.writeValueAsString(dataNode)
+                    objectMapper.writeValueAsString(processedNode),
+                    request.getOverwrite()
             );
 
             Map<String, Object> result = new LinkedHashMap<String, Object>();
@@ -156,7 +159,7 @@ public class EcmwfImportService {
             throw badRequest("请求体不能为空");
         }
         if (isBlank(request.getParam())) {
-            throw badRequest("param 不能为空，例如 2t / msl / t / u / v");
+            throw badRequest("param 不能为空，例如 skt / 2t / msl / ci / t / u / v");
         }
         int time = request.getTime() == null ? 0 : request.getTime();
         if (!VALID_TIMES.contains(time)) {
@@ -180,6 +183,54 @@ public class EcmwfImportService {
         }
         forecastDataService.validateTarget(
                 request.getDataset(), request.getYear(), request.getMonth(), request.getVarModel());
+    }
+
+    private static final List<String> ONE_DIMENSIONAL_MODELS = Arrays.asList(
+            "nino34_asc", "nino34_gtc", "nino34_mc", "nino34_mean",
+            "index_NAO_MCD",
+            "prediction_IceTFT", "mean_IceTFT", "upper_IceTFT", "lower_IceTFT"
+    );
+
+    private JsonNode processAndValidateDataNode(JsonNode dataNode, EcmwfImportRequest request) {
+        String varModel = request.getVarModel();
+        boolean isNestedGrid = isMultiDimensionalArray(dataNode);
+
+        if (ONE_DIMENSIONAL_MODELS.contains(varModel) && isNestedGrid) {
+            throw badRequest("目标 var_model [" + varModel + "] 期望保存一维指数时间序列，但目前从 ECMWF 获取的数据为原始多维气象场网格。"
+                    + "为防止数据格式紊乱，系统已拦截；若需保存网格请选择网格类 var_model（如 grid_NAO_MCD）。");
+        }
+
+        if ("grid_NAO_MCD".equalsIgnoreCase(varModel) && "msl".equalsIgnoreCase(request.getParam())) {
+            return transformPaToHpa(dataNode);
+        }
+
+        return dataNode;
+    }
+
+    private boolean isMultiDimensionalArray(JsonNode node) {
+        if (node != null && node.isArray() && node.size() > 0) {
+            JsonNode firstChild = node.get(0);
+            return firstChild != null && firstChild.isArray();
+        }
+        return false;
+    }
+
+    private JsonNode transformPaToHpa(JsonNode node) {
+        if (node == null) return null;
+        if (node.isNumber()) {
+            double val = node.asDouble();
+            if (val > 2000.0) {
+                return objectMapper.valueToTree(val / 100.0);
+            }
+            return node;
+        } else if (node.isArray()) {
+            com.fasterxml.jackson.databind.node.ArrayNode arrayNode = objectMapper.createArrayNode();
+            for (JsonNode child : node) {
+                arrayNode.add(transformPaToHpa(child));
+            }
+            return arrayNode;
+        }
+        return node;
     }
 
     private String defaultString(String value, String defaultValue) {
