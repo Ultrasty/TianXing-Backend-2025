@@ -22,17 +22,23 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.tongji.enso.mybatisdemo.admin.dto.IndexImportRequest;
+import com.tongji.enso.mybatisdemo.admin.service.IndexImportService;
+
 /** 功能 2.1-2.3：更新、删除、发布预报数据。所有接口都由 /admin/** 拦截器鉴权。 */
 @RestController
 @RequestMapping("/admin/forecast-data")
 public class ForecastDataAdminController {
     private final ForecastDataService forecastDataService;
     private final EcmwfImportService ecmwfImportService;
+    private final IndexImportService indexImportService;
 
     public ForecastDataAdminController(ForecastDataService forecastDataService,
-                                       EcmwfImportService ecmwfImportService) {
+                                       EcmwfImportService ecmwfImportService,
+                                       IndexImportService indexImportService) {
         this.forecastDataService = forecastDataService;
         this.ecmwfImportService = ecmwfImportService;
+        this.indexImportService = indexImportService;
     }
 
     @GetMapping("/meta")
@@ -87,5 +93,10 @@ public class ForecastDataAdminController {
     @PostMapping("/ecmwf")
     public ResponseEntity<Map<String, Object>> importFromEcmwf(@RequestBody EcmwfImportRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ecmwfImportService.importForecast(request));
+    }
+
+    @PostMapping("/noaa-index")
+    public ResponseEntity<Map<String, Object>> importFromNoaaIndex(@RequestBody IndexImportRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(indexImportService.importIndexFromNoaa(request));
     }
 }
