@@ -55,6 +55,24 @@ public class AdminForecastResultImageController {
         return AdminApiResponse.ok("预报结果图发布成功", toResponse(publishedImage));
     }
 
+    @PostMapping("/delete")
+    public AdminApiResponse<Map<String, Object>> deletePublished(@RequestBody DeletePublishedRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请求体不能为空");
+        }
+        publishService.deletePublishedImages(
+                request.getYear(),
+                request.getMonth(),
+                request.getDay(),
+                request.getType());
+        Map<String, Object> response = new HashMap<>();
+        response.put("year", request.getYear());
+        response.put("month", request.getMonth());
+        response.put("day", request.getDay());
+        response.put("type", request.getType());
+        return AdminApiResponse.ok("预报结果图删除成功", response);
+    }
+
     private Map<String, Object> toResponse(PublishedImage publishedImage) {
         Map<String, Object> response = new HashMap<>();
         response.put("id", publishedImage.getId());
@@ -112,6 +130,45 @@ public class AdminForecastResultImageController {
 
         public void setImageUrls(List<String> imageUrls) {
             this.imageUrls = imageUrls;
+        }
+    }
+
+    public static class DeletePublishedRequest {
+        private String year;
+        private String month;
+        private String day;
+        private String type;
+
+        public String getYear() {
+            return year;
+        }
+
+        public void setYear(String year) {
+            this.year = year;
+        }
+
+        public String getMonth() {
+            return month;
+        }
+
+        public void setMonth(String month) {
+            this.month = month;
+        }
+
+        public String getDay() {
+            return day;
+        }
+
+        public void setDay(String day) {
+            this.day = day;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
         }
     }
 }

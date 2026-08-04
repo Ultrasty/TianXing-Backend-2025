@@ -63,6 +63,17 @@ public class ForecastResultImagePublishService {
         return persistRecord(key, paths);
     }
 
+    public void deletePublishedImages(String year, String month, String day, String type) {
+        ImageKey key = normalizeKey(year, month, day, type);
+        int deleted = requiresDay(key.type)
+                ? imgsMapper.deleteByYearMonthDayType(key.year, key.month, key.day, key.type)
+                : imgsMapper.deleteByYearMonthType(key.year, key.month, key.type);
+        if (deleted <= 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到对应的预报结果图记录");
+        }
+        deleteStoredFiles(key);
+    }
+
     public List<ImageTypeOption> listSupportedTypes() {
         List<ImageTypeOption> options = new ArrayList<>();
         options.add(new ImageTypeOption("ENSO_ASC", "ENSO ASC", "月", false, "ENSO 模态预测结果图"));
@@ -314,6 +325,32 @@ public class ForecastResultImagePublishService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "上传路径非法");
         }
         return normalized;
+    }
+
+    private void deleteStoredFiles(ImageKey key) {
+        Path directory = targetDirectory(key);
+        if (!Files.exists(directory)) {
+            return;
+        }
+        try {
+            Files.walk(directory)
+                    .sorted((left, right) -> right.compareTo(left))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof IOException) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "删除图片文件失败", cause);
+            }
+            throw ex;
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "删除图片文件失败", ex);
+        }
     }
 
     private String publicPath(ImageKey key, String fileName) {
