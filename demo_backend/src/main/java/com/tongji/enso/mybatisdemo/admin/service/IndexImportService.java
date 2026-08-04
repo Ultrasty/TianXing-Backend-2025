@@ -43,6 +43,15 @@ public class IndexImportService {
 
         File scriptFile = new File("scripts/index_fetch.py");
         if (!scriptFile.exists()) {
+            scriptFile = new File("demo_backend/scripts/index_fetch.py");
+        }
+        if (!scriptFile.exists()) {
+            scriptFile = new File(System.getProperty("user.dir"), "scripts/index_fetch.py");
+        }
+        if (!scriptFile.exists()) {
+            scriptFile = new File(System.getProperty("user.dir"), "demo_backend/scripts/index_fetch.py");
+        }
+        if (!scriptFile.exists()) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "缺少 NOAA 抓取脚本: " + scriptFile.getAbsolutePath());
         }
 
