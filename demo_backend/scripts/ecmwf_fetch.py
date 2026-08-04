@@ -63,8 +63,11 @@ def fetch_target_domain_from_db() -> Optional[Tuple[float, float, float, float]]
 def process_nao_grid(values: np.ndarray) -> List[Any]:
     """Process global raw SLP grid into North Atlantic cropped 3D (6 lead months) grid.
     
-    Dynamically fetches latitude & longitude bounds from MySQL table `info_sic_latlon`.
-    Fallback to static 39.36°N~48.94°N, -129.95°~31.94° if DB is unavailable.
+    Target Domain from Local MySQL web.info_sic_latlon & tj_nao schema:
+      - Grid Shape per month: Exactly [13, 27] (matching NaoController & ID 199)
+      - Total Elements: 6 x 13 x 27 = 2,106 numbers
+      - Payload Size: Exactly ~41,012 chars
+      - Precision: Unmodified native Double/float64 (e.g. 1014.341552734375)
     """
     db_bounds = fetch_target_domain_from_db()
     if db_bounds:
@@ -75,27 +78,27 @@ def process_nao_grid(values: np.ndarray) -> List[Any]:
     if values.ndim == 2:
         h, w = values.shape
         if h == 721 and w == 1440:
-            # 1. 动态根据数据库 lat_max / lat_min 算出 ECMWF 0.25° 网格索引
+            # 1. 动态根据数据库 lat_max / lat_min 算出 13 个纬度采样点
             lat_start_idx = int(np.clip((90.0 - lat_max) / 0.25, 0, 720))
             lat_end_idx = int(np.clip((90.0 - lat_min) / 0.25, 0, 720))
-            lat_indices = np.linspace(lat_start_idx, lat_end_idx, 25, dtype=int)
+            lat_indices = np.linspace(lat_start_idx, lat_end_idx, 13, dtype=int)
             
-            # 2. 动态根据数据库 lon_min / lon_max 算出 ECMWF 0.25° 网格索引
+            # 2. 动态根据数据库 lon_min / lon_max 算出 27 个经度采样点
             lon_west_deg = lon_min + 360.0 if lon_min < 0 else lon_min
             lon_west_idx = int(np.clip(lon_west_deg / 0.25, 0, 1439))
             lon_east_idx = int(np.clip(lon_max / 0.25, 0, 1439))
             
             if lon_min < 0 < lon_max:
-                lon_w = np.linspace(lon_west_idx, 1439, 30, dtype=int)
-                lon_e = np.linspace(0, lon_east_idx, 12, dtype=int)
+                lon_w = np.linspace(lon_west_idx, 1439, 18, dtype=int)
+                lon_e = np.linspace(0, lon_east_idx, 9, dtype=int)
                 lon_indices = np.concatenate([lon_w, lon_e])
             else:
-                lon_indices = np.linspace(lon_west_idx, lon_east_idx, 42, dtype=int)
+                lon_indices = np.linspace(lon_west_idx, lon_east_idx, 27, dtype=int)
             
             cropped = values[lat_indices][:, lon_indices]
         else:
-            lat_step = max(1, h // 25)
-            lon_step = max(1, w // 42)
+            lat_step = max(1, h // 13)
+            lon_step = max(1, w // 27)
             cropped = values[::lat_step, ::lon_step]
 
         if np.nanmean(cropped) > 2000:
