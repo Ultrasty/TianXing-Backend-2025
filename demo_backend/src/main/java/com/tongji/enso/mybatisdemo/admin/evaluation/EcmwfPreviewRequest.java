@@ -1,11 +1,6 @@
 package com.tongji.enso.mybatisdemo.admin.evaluation;
 
 public class EcmwfPreviewRequest {
-    private String category;
-    private String year;
-    private String month;
-    private String day;
-    private String varModel;
     private String date;
     private Integer time;
     private Integer step;
@@ -19,16 +14,6 @@ public class EcmwfPreviewRequest {
     private String reducer;
     private Integer maxPoints;
 
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
-    public String getYear() { return year; }
-    public void setYear(String year) { this.year = year; }
-    public String getMonth() { return month; }
-    public void setMonth(String month) { this.month = month; }
-    public String getDay() { return day; }
-    public void setDay(String day) { this.day = day; }
-    public String getVarModel() { return varModel; }
-    public void setVarModel(String varModel) { this.varModel = varModel; }
     public String getDate() { return date; }
     public void setDate(String date) { this.date = date; }
     public Integer getTime() { return time; }

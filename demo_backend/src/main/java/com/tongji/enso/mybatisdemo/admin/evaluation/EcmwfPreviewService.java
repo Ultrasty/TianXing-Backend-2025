@@ -2,8 +2,6 @@ package com.tongji.enso.mybatisdemo.admin.evaluation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.IntNode;
 import com.tongji.enso.mybatisdemo.admin.common.AdminException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -30,11 +28,11 @@ public class EcmwfPreviewService {
     private static final List<String> VALID_MODELS = Arrays.asList("ifs", "aifs-single", "aifs-ens");
     private static final List<String> VALID_TYPES = Arrays.asList("fc", "pf", "em", "es", "ep");
     private static final List<String> VALID_REDUCERS = Arrays.asList("MEAN", "ROW_MEAN", "SAMPLE");
+    private static final String RAW_FIELD_KIND = "RAW_FIELD_REDUCTION";
     private static final Pattern SAFE_VALUE = Pattern.compile("^[A-Za-z0-9_.-]{1,64}$");
     private static final Pattern DATE = Pattern.compile("^(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2})$");
 
     private final ObjectMapper objectMapper;
-    private final EvaluationValidator validator;
 
     @Value("${admin.ecmwf.python:python}")
     private String pythonExecutable;
@@ -48,13 +46,12 @@ public class EcmwfPreviewService {
     @Value("${admin.ecmwf.max-output-bytes:5242880}")
     private long maxOutputBytes;
 
-    public EcmwfPreviewService(ObjectMapper objectMapper, EvaluationValidator validator) {
+    public EcmwfPreviewService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.validator = validator;
     }
 
     public Map<String, Object> preview(EcmwfPreviewRequest request) {
-        EvaluationCategory category = validate(request);
+        validate(request);
         Path output = null;
         Path log = null;
         try {
@@ -84,28 +81,7 @@ public class EcmwfPreviewService {
             try (InputStream input = Files.newInputStream(output)) {
                 root = objectMapper.readTree(input);
             }
-            JsonNode data = root.get("data");
-            if (data == null || !data.isArray() || data.size() == 0) {
-                throw new AdminException("ECMWF_OUTPUT_INVALID", "ECMWF 转换脚本未返回非空 data 数组",
-                        HttpStatus.BAD_GATEWAY);
-            }
-
-            EvaluationRecordRequest record = targetRecord(request, data);
-            validator.validateAndNormalize(category, record);
-            Map<String, Object> recordMap = new LinkedHashMap<>();
-            recordMap.put("year", record.getYear());
-            if (record.getMonth() != null) recordMap.put("month", record.getMonth());
-            if (record.getDay() != null) recordMap.put("day", record.getDay());
-            if (record.getVarModel() != null) recordMap.put("varModel", record.getVarModel());
-            recordMap.put("data", record.getData());
-            recordMap.put("source", "ECMWF");
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("source", "ECMWF");
-            result.put("category", category);
-            result.put("record", recordMap);
-            result.put("metadata", root.get("metadata"));
-            return result;
+            return toRawFieldPreview(root);
         } catch (AdminException exception) {
             throw exception;
         } catch (InterruptedException exception) {
@@ -120,9 +96,25 @@ public class EcmwfPreviewService {
         }
     }
 
-    private EvaluationCategory validate(EcmwfPreviewRequest request) {
+    Map<String, Object> toRawFieldPreview(JsonNode root) {
+        JsonNode data = root == null ? null : root.get("data");
+        if (data == null || !data.isArray() || data.size() == 0) {
+            throw new AdminException("ECMWF_OUTPUT_INVALID", "ECMWF 转换脚本未返回非空 data 数组",
+                    HttpStatus.BAD_GATEWAY);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source", "ECMWF");
+        result.put("dataKind", RAW_FIELD_KIND);
+        result.put("publishable", false);
+        result.put("values", data);
+        result.put("metadata", root.get("metadata"));
+        result.put("notice", "这是 ECMWF 原始预报场的工程归约结果，不是评估指标，不能直接写入评估表");
+        return result;
+    }
+
+    private void validate(EcmwfPreviewRequest request) {
         if (request == null) throw invalid("请求体不能为空");
-        EvaluationCategory category = EvaluationCategory.parse(request.getCategory());
         if (!safe(request.getParam())) throw invalid("param 只能包含字母、数字、点、下划线或连字符");
         if (!isBlank(request.getDate()) && !DATE.matcher(request.getDate().trim()).matches()) {
             throw invalid("date 必须是 YYYYMMDD 或 YYYY-MM-DD");
@@ -147,22 +139,6 @@ public class EcmwfPreviewService {
         if (!isBlank(request.getLevtype()) && !safe(request.getLevtype())) throw invalid("levtype 格式非法");
         if (!isBlank(request.getStream()) && !safe(request.getStream())) throw invalid("stream 格式非法");
 
-        ArrayNode placeholder = objectMapper.createArrayNode();
-        placeholder.add(IntNode.valueOf(0));
-        EvaluationRecordRequest target = targetRecord(request, placeholder);
-        validator.validateAndNormalize(category, target);
-        return category;
-    }
-
-    private EvaluationRecordRequest targetRecord(EcmwfPreviewRequest request, JsonNode data) {
-        EvaluationRecordRequest record = new EvaluationRecordRequest();
-        record.setYear(request.getYear());
-        record.setMonth(request.getMonth());
-        record.setDay(request.getDay());
-        record.setVarModel(request.getVarModel());
-        record.setData(data);
-        record.setSource("ECMWF");
-        return record;
     }
 
     private List<String> buildCommand(EcmwfPreviewRequest request, Path output) {

@@ -173,7 +173,7 @@ class EvaluationAdminApiIntegrationTests {
 
         jdbcTemplate.update("INSERT INTO tj_sie(year,month,var_model,data) VALUES(?,?,?,?)",
                 "2026", "3", "RMSD", "[1]");
-        String batch = "{\"source\":\"ECMWF\",\"mode\":\"UPSERT\",\"category\":\"SIE\",\"records\":[" +
+        String batch = "{\"source\":\"ECMWF\",\"dataKind\":\"EVALUATION_METRIC\",\"mode\":\"UPSERT\",\"category\":\"SIE\",\"records\":[" +
                 "{\"year\":\"2026\",\"month\":\"3\",\"varModel\":\"RMSD\",\"data\":[2]}," +
                 "{\"year\":\"2026\",\"month\":\"3\",\"varModel\":\"VAR\",\"data\":[3]}]}";
         mockMvc.perform(post("/admin/evaluations/import/batch")
@@ -190,9 +190,26 @@ class EvaluationAdminApiIntegrationTests {
     }
 
     @Test
+    void rejectsRawEcmwfFieldReductionAsEvaluationMetric() throws Exception {
+        String rawField = "{\"source\":\"ECMWF\",\"dataKind\":\"RAW_FIELD_REDUCTION\"," +
+                "\"mode\":\"UPSERT\",\"category\":\"SIE\",\"records\":[" +
+                "{\"year\":\"2026\",\"month\":\"8\",\"varModel\":\"RMSD\",\"data\":[273.15]}]}";
+
+        mockMvc.perform(post("/admin/evaluations/import/batch")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(rawField))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_FILE_INVALID"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM tj_sie WHERE year='2026' AND month='8'", Integer.class)).isZero();
+    }
+
+    @Test
     void rejectsDuplicatesAndRollsBackWholeBatchOnDatabaseFailure() throws Exception {
         jdbcTemplate.update("INSERT INTO obs_enso(year,data) VALUES(?,?)", "2029", "[1]");
-        String reject = "{\"source\":\"ECMWF\",\"mode\":\"REJECT\",\"category\":\"ENSO\",\"records\":[" +
+        String reject = "{\"source\":\"ECMWF\",\"dataKind\":\"EVALUATION_METRIC\",\"mode\":\"REJECT\",\"category\":\"ENSO\",\"records\":[" +
                 "{\"year\":\"2029\",\"data\":[2]},{\"year\":\"2030\",\"data\":[3]}]}";
         mockMvc.perform(post("/admin/evaluations/import/batch")
                         .header("Authorization", "Bearer " + token)
@@ -203,7 +220,7 @@ class EvaluationAdminApiIntegrationTests {
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM obs_enso WHERE year='2030'", Integer.class))
                 .isZero();
 
-        String rollback = "{\"source\":\"ECMWF\",\"mode\":\"UPSERT\",\"category\":\"SIC\",\"records\":[" +
+        String rollback = "{\"source\":\"ECMWF\",\"dataKind\":\"EVALUATION_METRIC\",\"mode\":\"UPSERT\",\"category\":\"SIC\",\"records\":[" +
                 "{\"year\":\"2027\",\"month\":\"1\",\"day\":\"1\",\"varModel\":\"2027_RMSE\",\"data\":[1]}," +
                 "{\"year\":\"2027\",\"month\":\"1\",\"day\":\"2\",\"varModel\":\"2027_BACC\",\"data\":[999]}]}";
         mockMvc.perform(post("/admin/evaluations/import/batch")
