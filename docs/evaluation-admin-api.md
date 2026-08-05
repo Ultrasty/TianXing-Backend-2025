@@ -18,8 +18,9 @@ Authorization: Bearer <JWT>
 | PUT | `/admin/evaluations/{category}/{id}` | 更新完整记录 | 200 |
 | DELETE | `/admin/evaluations/{category}/{id}` | 删除记录 | 200 |
 | POST | `/admin/evaluations/import/manual` | 手动 JSON 文件导入 | 200 |
+| POST | `/admin/evaluations/nsidc/evaluate` | 用现有 Ice-BCNet/IceTFT 预测和 NSIDC 观测计算 SIC/SIE 指标，可预览或发布 | 200 |
 | POST | `/admin/evaluations/ecmwf/preview` | 下载并解析 ECMWF Open Data，生成不可直接发布的原始场预览 | 200 |
-| POST | `/admin/evaluations/import/batch` | 上游已计算的 ECMWF 评估指标批量入库 | 200 |
+| POST | `/admin/evaluations/import/batch` | 受信上游已计算指标批量入库 | 200 |
 
 ## 登录
 
@@ -88,6 +89,53 @@ Content-Type: multipart/form-data
 }
 ```
 
+## NSIDC 科学评估
+
+### SIC：Ice-BCNet 对 MASAM2 V2
+
+```http
+POST /admin/evaluations/nsidc/evaluate
+Content-Type: application/json
+```
+
+```json
+{
+  "category": "SIC",
+  "year": "2023",
+  "month": "4",
+  "day": "22",
+  "leadStartOffsetDays": 0,
+  "mode": "PREVIEW"
+}
+```
+
+后端从 `tj_sic` 读取该日期的 `SIC_Ice-BCNet` 7 天预测，从 `info_sic_latlon` 读取 384×420 模型网格；下载 NSIDC G10005 MASAM2 V2 月度 NetCDF，将每日观测双线性重投影到模型网格并屏蔽无效/陆地邻点。输出：
+
+- `{year}_RMSE`：按模型网格面积加权的 SIC 格点 RMSE，单位为百分点。
+- `{year}_BACC`：以 SIC ≥ 15% 判定海冰，按面积计算灵敏度和特异度后取均值，单位为百分比。
+- `diagnostics`：每个时效的有效日期、格点数、面积、灵敏度、特异度和 IIEE。
+
+`leadStartOffsetDays=0` 表示数组第一个场对应起报当天；若数据生产约定第一个场对应次日，传 `1`。不允许猜测其它偏移。
+
+### SIE：IceTFT 对 Sea Ice Index V4
+
+```json
+{
+  "category": "SIE",
+  "year": "2022",
+  "mode": "PREVIEW"
+}
+```
+
+后端读取该年的全部 `prediction_IceTFT` 月起报；每条 12 值数组的索引 0 对应起报月，索引 1–11 对应后续月份。观测来自 NSIDC G02135 Sea Ice Index V4 北半球月平均 extent。系统按提前 1–12 月归组，输出 `RMSD`、`BAIS`、`VAR`、`CORRELATION`、`OBS_STD`、`PRE_STD`；`BAIS` 延用历史表拼写，含义为平均偏差的平方。
+
+`mode` 的含义：
+
+- `PREVIEW`：计算并返回，不改数据库。
+- `UPSERT`：在同一事务中新增或更新指标，同时写入 `evaluation_metric_provenance`。
+
+响应固定包含 `source=NSIDC`、`dataKind=EVALUATION_METRIC`、预测模型、观测数据集/版本/DOI、访问时间、源 URL、SHA-256、匹配规则、公式说明和发布结果。完整方法见 `docs/nsidc-scientific-evaluation.md`。
+
 ## ECMWF 原始场预览与上游指标入库
 
 第一步从 Open Data 下载 GRIB2，解析字段并生成原始场归约预览：
@@ -126,7 +174,7 @@ Content-Type: application/json
 }
 ```
 
-第二步必须由上游程序引入观测数据，完成变量、有效时间、网格、单位和掩膜匹配，再计算领域指标。只有计算完成的指标才能调用批量接口：
+若将来有其它受信上游程序引入观测数据并完成变量、有效时间、网格、单位和掩膜匹配，计算完成的指标仍可调用批量接口：
 
 ```http
 POST /admin/evaluations/import/batch
@@ -147,10 +195,10 @@ Content-Type: application/json
 
 - `REJECT`：任何非法或重复记录都会使整批零写入。
 - `UPSERT`：存在则更新，不存在则新增；任一写入失败时整批回滚。
-- 单批默认最多 500 条；ECMWF 入口的 `source` 必须为 `ECMWF`。
+- 单批默认最多 500 条；这个兼容入口当前要求 `source=ECMWF`。
 - `dataKind` 必须为 `EVALUATION_METRIC`；缺失该字段或提交 `RAW_FIELD_REDUCTION` 均返回 `400 IMPORT_FILE_INVALID`，不会写库。
 
-注意：Open Data 原始场获取与评估指标发布是两条隔离的链路。空间平均或抽样值不自动等同于 RMSD、BACC、相关系数等科研检验指标；正式科研结果应由带观测数据和领域公式的上游评估程序生成，再复用批量入库接口。
+注意：ECMWF Open Data 原始场获取与 NSIDC 海冰评估是两条隔离的链路。空间平均或抽样值不等于 RMSD、BACC 或相关系数，也不能提交给 NSIDC 评估入口。
 
 成功结果：
 
@@ -201,13 +249,20 @@ ECMWF_PYTHON=python
 ECMWF_SCRIPT_PATH=scripts/ecmwf_evaluation_fetch.py
 ECMWF_TIMEOUT_SECONDS=240
 ECMWF_MAX_OUTPUT_BYTES=5242880
+NSIDC_PYTHON=python
+NSIDC_SCRIPT_PATH=scripts/nsidc_evaluation.py
+NSIDC_CACHE_DIR=<可写的持久缓存目录>
+NSIDC_TIMEOUT_SECONDS=900
+NSIDC_MAX_OUTPUT_BYTES=5242880
+NSIDC_DOWNLOAD_WORKERS=12
 ```
 
-ECMWF Python 依赖安装：
+Python 依赖安装：
 
 ```powershell
-python -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r scripts\requirements-ecmwf.txt
+.\.venv\Scripts\python.exe -m pip install -r scripts\requirements-nsidc.txt
 ```
 
 先在 PowerShell 中进入 MySQL 客户端：
@@ -220,6 +275,8 @@ mysql -u root -p web
 
 ```sql
 SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V001__create_admin_user.sql;
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V002__add_evaluation_natural_key_indexes.sql;
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V003__add_evaluation_metric_provenance.sql;
 ```
 
-然后在仓库根目录运行 `scripts/generate-bcrypt-hash.ps1`，用输出的哈希创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。
+然后在仓库根目录运行 `scripts/generate-bcrypt-hash.ps1`，用输出的哈希创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。不要在 PowerShell 提示符直接输入 SQL。

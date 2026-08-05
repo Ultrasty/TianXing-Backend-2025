@@ -4,15 +4,16 @@
 
 ## 自动化结果
 
-- 后端 `mvnw.cmd test`：17 个测试全部通过。
+- 后端 `mvnw.cmd test`：18 个测试全部通过。
+- Python `py -3.12 scripts/test_nsidc_evaluation.py`：3 个指标/匹配测试全部通过。
 - 前端 `pnpm install --frozen-lockfile`：通过。
 - 前端 `pnpm build`：通过；仅有现有 Sass legacy API 和大 chunk 警告。
-- 后端测试覆盖管理员登录/JWT、四类数据 CRUD、手动导入、上游评估指标 UPSERT、ECMWF 原始场拒绝入库、重复拒绝、批次回滚、字段白名单，以及 ECMWF 请求参数安全校验。
+- 后端测试覆盖管理员登录/JWT、四类数据 CRUD、手动导入、NSIDC 评估发布与来源留痕、上游指标 UPSERT、ECMWF 原始场拒绝入库、重复拒绝、批次回滚、字段白名单，以及外部脚本请求参数安全校验。
 - 测试日志中的一次 H2 约束异常是用于验证整批回滚的预期场景，最终结果仍为成功。
 
 ## 真实 MySQL 8 验证
 
-使用 MySQL 8.0.46 导入 `mysql_backup_20251023.sql`，四张表的自然键重复检查均为 0；V001/V002 迁移执行成功。
+使用 MySQL 8.0.46 导入 `mysql_backup_20251023.sql`，四张表的自然键重复检查均为 0；V001/V002 迁移执行成功。新增 V003 用于 NSIDC 指标来源留痕，交付环境需按演示文档执行。
 
 运行态 HTTP 验证：
 
@@ -25,6 +26,28 @@
 | SIE 手动 JSON 导入 | 新增 1 条，查询成功，演示数据已删除 |
 | 上游已计算的 ECMWF 指标批量 UPSERT | 新增 1 条，查询成功，演示数据已删除 |
 
+## 真实 NSIDC 科学评估验证
+
+### SIC
+
+使用数据库中的 `SIC_Ice-BCNet` 2023-04-22 起报和 `info_sic_latlon` 384×420 网格，下载官方 NSIDC G10005 MASAM2 V2 `masam2_minconc40_202304_v2.nc`：
+
+- 观测原网格：2550×2100；使用产品极射赤面投影双线性匹配到模型网格。
+- 7 天面积加权 RMSE：`8.409832, 9.891923, 10.517396, 11.462054, 11.650891, 11.992940, 12.531765` 个百分点。
+- 7 天面积加权 BACC：`99.003666, 98.399655, 98.029566, 97.672068, 97.547207, 97.431038, 97.226418`%。
+- 每日约 7.95 万有效格点、约 2520 万 km² 有效面积；源 URL、版本和 SHA-256 均进入响应/来源表。
+
+另行诊断发现现有 2025 SIC 预测与 NSIDC 得分明显较低，而相同观测重投影与数据库观测高度一致。该现象按预测输入质量问题记录，不修改公式或日期来美化结果。
+
+### SIE
+
+使用 2022 年 12 条 `prediction_IceTFT` 月起报和官方 NSIDC G02135 Sea Ice Index V4：
+
+- 每个提前时效均有 12 个配对样本。
+- lead 1–12 RMSD 为 `0.191984–0.267709` 百万 km²。
+- Pearson 相关系数约 `0.996995–0.999142`。
+- 同时生成并可发布 BAIS、VAR、OBS_STD 和 PRE_STD，来源文件逐一记录 SHA-256。
+
 ## 真实 ECMWF Open Data 验证
 
 使用 ECMWF Open Data Client 下载最新 IFS `2t`、step 0 的 GRIB2 数据并通过 ecCodes 解码：
@@ -36,12 +59,14 @@
 - 经 `POST /admin/evaluations/ecmwf/preview` 返回 `RAW_FIELD_REDUCTION`、`publishable=false` 和归约值；不会生成可直接入评估表的记录。
 - 主站发生瞬时 SSL 错误时，脚本会按顺序尝试 AWS、Google、Azure 镜像；本次最终实际 provider 为 `ecmwf`。
 
-该结果证明真实下载、GRIB2 解析、转换和安全预览链路可用。空间平均/逐行平均/抽样不是领域评估公式；批量接口只接受显式标记为 `EVALUATION_METRIC` 的上游计算结果，提交 `RAW_FIELD_REDUCTION` 会返回 400 且零写入。正式 RMSD、BACC、相关系数等指标仍需带观测数据的上游评估程序计算。
+该结果证明真实下载、GRIB2 解析、转换和安全预览链路可用。空间平均/逐行平均/抽样不是领域评估公式；提交 `RAW_FIELD_REDUCTION` 会返回 400 且零写入。真正的 SIC/SIE RMSD、BACC 和相关系数现在由上述 NSIDC 评估链路计算，ECMWF 继续保持独立。
 
 ## 前端浏览器联调
 
 - 未登录路由守卫和管理员登录成功。
 - 登录后可见 ENSO、NAO、SIC、SIE 四个页签和数据库真实数据。
+- 管理页可分别执行 NSIDC SIC/SIE 科学评估的预览和 UPSERT，并显示观测产品、版本、匹配方式和诊断值。
+- ECMWF 原始场入口仍独立显示，不能发布为海冰指标。
 - 通过页面实际新增并删除 ENSO 演示记录成功。
 - 修复了原全局 `.el-button` 样式导致所有普通按钮绝对定位、点击区域重叠的问题；箭头样式现只作用于图表左右切换按钮。
 
