@@ -14,6 +14,7 @@
 
     <select id="findErrorByMonth" resultType="Tj_sic">
         select * from tj_sic where year=#{year} and month=#{month} and var_model like concat('%', #{year}, '%')
+        order by cast(day as decimal), id
     </select>
 
     <select id="findErrorBoxByYearAndModel" resultType="Tj_sic">

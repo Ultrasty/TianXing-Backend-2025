@@ -61,19 +61,21 @@ public class Tj_sicController {
 
         List<Tj_sic> sicList=tj_sicservice.findErrorByMonth(year,month);
 
-        Map<String, Object> sicMap=new HashMap<>();
+        Map<String, List<Double>> grouped = new LinkedHashMap<>();
         ObjectMapper objectMapper = new ObjectMapper();
-        double []data = null;
         for(Tj_sic sic:sicList){
             try {
                 String jsonString = sic.getData();
-                data = objectMapper.readValue(jsonString, double[].class);
-                sicMap.put(sic.getVar_model(),data);
+                double[] data = objectMapper.readValue(jsonString, double[].class);
+                List<Double> values = grouped.computeIfAbsent(sic.getVar_model(), key -> new ArrayList<>());
+                for (double value : data) values.add(value);
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }
         }
-        return sicMap;
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.putAll(grouped);
+        return response;
     }
 
     @GetMapping("/errorBox")
