@@ -60,6 +60,8 @@ pnpm build
 只在 `mysql>` 中运行：
 
 ```sql
+USE web;
+
 SHOW TABLES LIKE 'admin_user';
 SHOW TABLES LIKE 'evaluation_metric_provenance';
 
@@ -92,7 +94,9 @@ WHERE year='2022' AND var_model='prediction_IceTFT';
 如果缺少来源表，只执行 V003：
 
 ```sql
+USE web;
 SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V003__add_evaluation_metric_provenance.sql;
+SHOW TABLES LIKE 'evaluation_metric_provenance';
 ```
 
 不要因为缺 V003 而重复执行大备份或已经完成的 V001/V002。
