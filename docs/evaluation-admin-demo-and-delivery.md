@@ -211,6 +211,8 @@ pnpm dev
 
 ## 7. 提交和交付清单
 
+逐项测试命令、预期结果、数据库核对 SQL 和故障判断见 `docs/evaluation-testing-guide.md`。
+
 交付前分别在两个仓库执行：
 
 ```powershell
