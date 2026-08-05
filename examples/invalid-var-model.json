@@ -1,5 +1,6 @@
 {
   "source": "ECMWF",
+  "dataKind": "EVALUATION_METRIC",
   "mode": "REJECT",
   "category": "SIC",
   "records": [

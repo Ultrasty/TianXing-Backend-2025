@@ -18,8 +18,8 @@ Authorization: Bearer <JWT>
 | PUT | `/admin/evaluations/{category}/{id}` | 更新完整记录 | 200 |
 | DELETE | `/admin/evaluations/{category}/{id}` | 删除记录 | 200 |
 | POST | `/admin/evaluations/import/manual` | 手动 JSON 文件导入 | 200 |
-| POST | `/admin/evaluations/ecmwf/preview` | 下载并解析 ECMWF Open Data，生成待入库记录 | 200 |
-| POST | `/admin/evaluations/import/batch` | ECMWF 标准 JSON 入库 | 200 |
+| POST | `/admin/evaluations/ecmwf/preview` | 下载并解析 ECMWF Open Data，生成不可直接发布的原始场预览 | 200 |
+| POST | `/admin/evaluations/import/batch` | 上游已计算的 ECMWF 评估指标批量入库 | 200 |
 
 ## 登录
 
@@ -88,9 +88,9 @@ Content-Type: multipart/form-data
 }
 ```
 
-## ECMWF 真实获取、转换与入库
+## ECMWF 原始场预览与上游指标入库
 
-第一步从 Open Data 下载 GRIB2，解析字段并生成标准记录预览：
+第一步从 Open Data 下载 GRIB2，解析字段并生成原始场归约预览：
 
 ```http
 POST /admin/evaluations/ecmwf/preview
@@ -99,10 +99,6 @@ Content-Type: application/json
 
 ```json
 {
-  "category": "SIE",
-  "year": "2026",
-  "month": "8",
-  "varModel": "RMSD",
   "time": 0,
   "step": 24,
   "param": "2t",
@@ -115,9 +111,22 @@ Content-Type: application/json
 }
 ```
 
-`date` 可留空以获取最新起报；`reducer` 支持 `MEAN`、`ROW_MEAN` 和 `SAMPLE`。服务会优先使用指定源，ECMWF 主站发生瞬时网络错误时依次尝试 AWS、Google 和 Azure 镜像。成功响应的 `data.record` 可直接用于下一步批量入库，`data.metadata` 会记录实际数据源、模型、起报时间、网格数和字段单位。
+`date` 可留空以获取最新起报；`reducer` 支持 `MEAN`、`ROW_MEAN` 和 `SAMPLE`。服务会优先使用指定源，ECMWF 主站发生瞬时网络错误时依次尝试 AWS、Google 和 Azure 镜像。响应中的 `data.values` 是工程归约值，`data.metadata` 会记录实际数据源、模型、起报时间、网格数和字段单位。
 
-第二步确认预览后，以 UPSERT 方式写入数据库：
+预览响应固定包含以下安全标识，不能直接转为评估记录：
+
+```json
+{
+  "source": "ECMWF",
+  "dataKind": "RAW_FIELD_REDUCTION",
+  "publishable": false,
+  "values": [281.13],
+  "metadata": {},
+  "notice": "这是 ECMWF 原始预报场的工程归约结果，不是评估指标，不能直接写入评估表"
+}
+```
+
+第二步必须由上游程序引入观测数据，完成变量、有效时间、网格、单位和掩膜匹配，再计算领域指标。只有计算完成的指标才能调用批量接口：
 
 ```http
 POST /admin/evaluations/import/batch
@@ -127,6 +136,7 @@ Content-Type: application/json
 ```json
 {
   "source": "ECMWF",
+  "dataKind": "EVALUATION_METRIC",
   "mode": "UPSERT",
   "category": "SIE",
   "records": [
@@ -138,8 +148,9 @@ Content-Type: application/json
 - `REJECT`：任何非法或重复记录都会使整批零写入。
 - `UPSERT`：存在则更新，不存在则新增；任一写入失败时整批回滚。
 - 单批默认最多 500 条；ECMWF 入口的 `source` 必须为 `ECMWF`。
+- `dataKind` 必须为 `EVALUATION_METRIC`；缺失该字段或提交 `RAW_FIELD_REDUCTION` 均返回 `400 IMPORT_FILE_INVALID`，不会写库。
 
-注意：这里完成的是“真实 Open Data 下载 + GRIB 字段解析 + 数组归约 + 标准记录入库”。空间平均或抽样值不自动等同于 RMSD、BACC、相关系数等科研检验指标；正式科研结果应由带观测数据和领域公式的上游评估程序生成，再复用批量入库接口。
+注意：Open Data 原始场获取与评估指标发布是两条隔离的链路。空间平均或抽样值不自动等同于 RMSD、BACC、相关系数等科研检验指标；正式科研结果应由带观测数据和领域公式的上游评估程序生成，再复用批量入库接口。
 
 成功结果：
 

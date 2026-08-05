@@ -108,16 +108,12 @@ Content-Type: application/json
 < ../../examples/manual-evaluation-import.json
 --EvaluationBoundary--
 
-### ECMWF Open Data 真实下载、GRIB 解析和标准记录预览
+### ECMWF Open Data 真实下载、GRIB 解析和原始场预览（不可直接入评估表）
 POST {{baseUrl}}/admin/evaluations/ecmwf/preview
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-  "category": "SIE",
-  "year": "2026",
-  "month": "8",
-  "varModel": "RMSD",
   "time": 0,
   "step": 24,
   "param": "2t",
@@ -129,13 +125,14 @@ Content-Type: application/json
   "maxPoints": 200
 }
 
-### ECMWF 标准记录批量入库
+### 上游完成观测匹配和指标计算后的 ECMWF 评估结果入库
 POST {{baseUrl}}/admin/evaluations/import/batch
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
   "source": "ECMWF",
+  "dataKind": "EVALUATION_METRIC",
   "mode": "UPSERT",
   "category": "SIE",
   "records": [

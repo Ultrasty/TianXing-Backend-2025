@@ -155,10 +155,10 @@ pnpm dev
 2. **2.9 发布（约 60 秒）**：进入 SIE，点击“发布数据”，填写 `year=2099`、`month=12`、`varModel=RMSD`、`data=[0.12,0.18,0.21]`。保存后查询并展示 MySQL 返回的真实记录。
 3. **2.7 更新（约 40 秒）**：点击刚发布记录的“更新”，把数组改为 `[0.20,0.25,0.30]`；保存并展示列表刷新结果。
 4. **JSON 批量发布（约 50 秒）**：选择 SIE 页签和 `examples/demo-sie-manual-import.json`，用 `REJECT` 导入；说明 `UPSERT` 可覆盖自然键相同的记录。
-5. **真实 ECMWF（约 2 分钟）**：在 SIE 页签点击“ECMWF 获取”，填写一个远期入库键（例如 `year=2097`、`month=10`、`varModel=RMSD`），保留 `2t / IFS / ECMWF / MEAN`，起报日期留空。点击“获取并生成预览”，展示返回的实际来源、字段单位、网格点数量和转换数组；确认后点击“以 UPSERT 方式入库”，再从列表查询该记录。
-6. **2.8 删除和清理（约 50 秒）**：分别删除 2099 和 ECMWF 演示记录，确认列表消失；最后退出登录并说明无 Token 接口返回 401。
+5. **真实 ECMWF（约 2 分钟）**：点击“ECMWF 原始场”，保留 `2t / IFS / ECMWF / MEAN`，起报日期留空。点击“获取并生成预览”，展示实际来源、字段单位、网格点数量、归约数组，以及 `RAW_FIELD_REDUCTION / publishable=false` 标识；可下载预览 JSON，但页面不会把它发布为 RMSD 等评估指标。
+6. **2.8 删除和清理（约 50 秒）**：删除步骤 2 和步骤 4 创建的 2099、2098 演示记录，确认列表消失；最后退出登录并说明无 Token 接口返回 401。
 
-演示 ECMWF 时应准确表述：系统已完成真实 Open Data 下载、GRIB2 解析、字段归约和标准入库闭环；`MEAN/ROW_MEAN/SAMPLE` 是工程转换规则，不应冒充 RMSD、BACC 或相关系数等领域检验公式。正式科研指标应由带观测数据的评估任务生成后再入库。
+演示 ECMWF 时应准确表述：系统已完成真实 Open Data 下载、GRIB2 解析、字段归约和安全预览；`MEAN/ROW_MEAN/SAMPLE` 是工程转换规则，系统明确禁止把这些结果直接冒充 RMSD、BACC 或相关系数入库。正式科研指标应由带观测数据的评估任务生成，再以 `dataKind=EVALUATION_METRIC` 调用批量接口。
 
 ## 4. 任务验收映射
 
@@ -166,7 +166,9 @@ pnpm dev
 | --- | --- | --- | --- |
 | 2.7 更新评估数据 | 列表“更新”弹窗 | `PUT /admin/evaluations/{category}/{id}`，完整校验并按 ID 更新 | 更新后列表与 MySQL 值一致 |
 | 2.8 删除评估数据 | 二次确认后删除 | `DELETE /admin/evaluations/{category}/{id}`，不存在返回 404 | 删除后查询不到记录 |
-| 2.9 发布评估数据 | 单条发布、JSON 文件导入、ECMWF 预览后 UPSERT | `POST /admin/evaluations`、`/import/manual`、`/ecmwf/preview`、`/import/batch` | 发布后可查询；重复键按 REJECT/UPSERT 规则处理 |
+| 2.9 发布评估数据 | 单条发布、JSON 文件导入、上游已计算指标批量发布 | `POST /admin/evaluations`、`/import/manual`、`/import/batch` | 发布后可查询；重复键按 REJECT/UPSERT 规则处理；原始 ECMWF 场不可发布 |
+
+`POST /admin/evaluations/ecmwf/preview` 是独立的 ECMWF 原始场获取能力，不作为 2.9 科学评估指标发布的替代品。
 
 四类数据 ENSO、NAO、SIC、SIE 的字段和指标白名单由 `/admin/evaluations/meta` 返回，前端不再使用 mock 数据，也不再把 SIC/SIE 合成 SeaIce。
 
