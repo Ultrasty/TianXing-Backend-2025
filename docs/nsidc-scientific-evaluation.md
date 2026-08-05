@@ -15,6 +15,8 @@
 - MASAM2 V2：https://nsidc.org/data/g10005/versions/2
 - Sea Ice Index V4：https://nsidc.org/data/g02135/versions/4
 - ECMWF Open Data：https://www.ecmwf.int/en/forecasts/datasets/open-data
+- Ice-BCNet 论文：https://doi.org/10.1016/j.ocemod.2024.102326
+- 归一化 IIEE / binary accuracy 方法：https://doi.org/10.1038/s41467-021-25257-4
 
 ## SIC 匹配与指标
 
@@ -27,20 +29,19 @@
 面积加权 RMSE：
 
 ```text
-RMSE = sqrt(sum(area_i * (pred_i - obs_i)^2) / sum(area_i)) * 100
+RMSE = sqrt(sum(area_i * (pred_i - obs_i)^2) / sum(area_i))
 ```
 
-输出单位为 SIC 百分点。
+预测和观测均使用 0–1 的 SIC 分数，结果也保存为 0–1，和现有 `tj_sic` 历史数组一致；前端展示时乘 100 标成百分比。
 
-BACC 使用 15% 海冰阈值：
+BACC 按 Ice-BCNet 使用的归一化 IIEE 口径计算。先用 SIC > 15% 判定海冰，IIEE 是预测和观测冰区对称差的面积；分母是 NSIDC Sea Ice Index V4 在 1991–2020 年内、对应日历月的最大日 SIE：
 
 ```text
-sensitivity = TP_area / (TP_area + FN_area)
-specificity = TN_area / (TN_area + FP_area)
-BACC = (sensitivity + specificity) / 2 * 100
+IIEE = false_positive_area + false_negative_area
+BACC = 1 - IIEE / monthly_active_region_area
 ```
 
-这里的 BACC 明确定义为面积加权 balanced accuracy，不把它含糊地写成其它论文中的同名或归一化指标。响应还给出 IIEE、有效面积和有效格点，方便判断高分是否由掩膜异常造成。
+结果保存为 0–1；响应同时给出 IIEE、有效面积、月度 active-region 面积、灵敏度和特异度作为诊断。这个 BACC 不是通用分类学中 `(灵敏度+特异度)/2` 的 balanced accuracy，不能混用同名公式。
 
 ## SIE 匹配与指标
 
@@ -71,7 +72,7 @@ SIE、RMSD 和标准差的单位为百万平方公里；BAIS、VAR 为其平方�
 
 ## 已核验样例（2026-08-05 运行）
 
-- `SIC_Ice-BCNet`，起报 2023-04-22：lead 1–7 RMSE 为 `8.409832, 9.891923, 10.517396, 11.462054, 11.650891, 11.992940, 12.531765`；BACC 为 `99.003666, 98.399655, 98.029566, 97.672068, 97.547207, 97.431038, 97.226418`。
+- `SIC_Ice-BCNet`，起报 2023-04-22：lead 1–7 RMSE 为 `0.084098315, 0.098919229, 0.105173961, 0.114620542, 0.116508910, 0.119929401, 0.125317650`；BACC 为 `0.984021520, 0.974444380, 0.968473066, 0.962763090, 0.960757927, 0.958927358, 0.955491729`。
 - `prediction_IceTFT`，2022 年 12 个起报样本：lead 1–12 RMSD 为 `0.191984, 0.179397, 0.211625, 0.224933, 0.210857, 0.204679, 0.217675, 0.241080, 0.255676, 0.267709, 0.253065, 0.236150`；相关系数约为 `0.996995–0.999142`。
 
 这些数字是验收用真实运行证据，不应写成模型对所有年份的总体性能结论。

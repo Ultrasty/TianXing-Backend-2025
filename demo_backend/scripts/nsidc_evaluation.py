@@ -45,6 +45,10 @@ SEA_ICE_INDEX_URL = (
     "https://noaadata.apps.nsidc.org/NOAA/G02135/north/monthly/data/"
     "N_{month:02d}_extent_v4.0.csv"
 )
+SEA_ICE_INDEX_DAILY_URL = (
+    "https://noaadata.apps.nsidc.org/NOAA/G02135/north/daily/data/"
+    "N_seaice_extent_daily_v4.0.csv"
+)
 ICE_THRESHOLD = 0.15
 EARTH_RADIUS_METRES = 6_371_008.8
 
@@ -147,7 +151,7 @@ def download_cached(url: str, cache_dir: Path, workers: int = 12) -> tuple[Path,
     session = request_session()
     expected_size = remote_size(session, url)
     if not target.exists() or target.stat().st_size != expected_size:
-        if expected_size < 2 * 1024 * 1024:
+        if expected_size < 256 * 1024:
             download_small(session, url, target, expected_size)
         else:
             download_parallel_ranges(session, url, target, expected_size, workers)
@@ -259,37 +263,63 @@ def bilinear_regrid_masam2(
 
 
 def weighted_sic_metrics(
-    prediction: np.ndarray, observation: np.ndarray, area: np.ndarray
-) -> dict[str, float | int]:
+    prediction: np.ndarray,
+    observation: np.ndarray,
+    area: np.ndarray,
+    active_region_area_m2: float,
+) -> dict[str, float | int | None]:
     valid = np.isfinite(prediction) & np.isfinite(observation) & np.isfinite(area) & (area > 0)
     if not np.any(valid):
         raise EvaluationError("Prediction and NSIDC observation have no matched valid ocean cells")
     weights = area[valid]
     predicted = prediction[valid]
     observed = observation[valid]
+    if not np.isfinite(active_region_area_m2) or active_region_area_m2 <= 0:
+        raise EvaluationError("BACC active-region area must be positive")
     rmse = math.sqrt(float(np.average((predicted - observed) ** 2, weights=weights)))
-    predicted_ice = predicted >= ICE_THRESHOLD
-    observed_ice = observed >= ICE_THRESHOLD
+    predicted_ice = predicted > ICE_THRESHOLD
+    observed_ice = observed > ICE_THRESHOLD
     true_positive = float(weights[predicted_ice & observed_ice].sum())
     false_negative = float(weights[~predicted_ice & observed_ice].sum())
     true_negative = float(weights[~predicted_ice & ~observed_ice].sum())
     false_positive = float(weights[predicted_ice & ~observed_ice].sum())
     positive_total = true_positive + false_negative
     negative_total = true_negative + false_positive
-    if positive_total <= 0 or negative_total <= 0:
-        raise EvaluationError("BACC requires both ice and open-water observation cells")
-    sensitivity = true_positive / positive_total
-    specificity = true_negative / negative_total
-    balanced_accuracy = (sensitivity + specificity) / 2.0
+    sensitivity = true_positive / positive_total if positive_total > 0 else None
+    specificity = true_negative / negative_total if negative_total > 0 else None
+    iiee_m2 = false_positive + false_negative
+    bacc = 1.0 - iiee_m2 / active_region_area_m2
     return {
-        "rmsePercent": round(rmse * 100.0, 6),
-        "baccPercent": round(balanced_accuracy * 100.0, 6),
+        "rmse": round(rmse, 9),
+        "bacc": round(bacc, 9),
         "validCellCount": int(valid.sum()),
         "validAreaKm2": round(float(weights.sum()) / 1_000_000.0, 3),
-        "sensitivityPercent": round(sensitivity * 100.0, 6),
-        "specificityPercent": round(specificity * 100.0, 6),
-        "iieeKm2": round((false_positive + false_negative) / 1_000_000.0, 3),
+        "activeRegionAreaKm2": round(active_region_area_m2 / 1_000_000.0, 3),
+        "sensitivity": round(sensitivity, 9) if sensitivity is not None else None,
+        "specificity": round(specificity, 9) if specificity is not None else None,
+        "iieeKm2": round(iiee_m2 / 1_000_000.0, 3),
     }
+
+
+def parse_monthly_active_region_areas(
+    content: str, start_year: int = 1991, end_year: int = 2020
+) -> dict[int, float]:
+    """Return each calendar month's maximum daily SIE in square metres."""
+    maxima: dict[int, float] = {}
+    for raw_row in csv.DictReader(io.StringIO(content)):
+        row = {key.strip(): value.strip() for key, value in raw_row.items() if key is not None}
+        try:
+            year = int(row["Year"])
+            month = int(row["Month"])
+            extent_million_km2 = float(row["Extent"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if start_year <= year <= end_year and 1 <= month <= 12 and 0 < extent_million_km2 < 30:
+            area_m2 = extent_million_km2 * 1_000_000.0 * 1_000_000.0
+            maxima[month] = max(maxima.get(month, 0.0), area_m2)
+    if set(maxima) != set(range(1, 13)):
+        raise EvaluationError("Sea Ice Index daily series lacks the 1991-2020 monthly BACC baseline")
+    return maxima
 
 
 def evaluate_sic(payload: dict[str, Any], cache_dir: Path, workers: int) -> dict[str, Any]:
@@ -308,6 +338,12 @@ def evaluate_sic(payload: dict[str, Any], cache_dir: Path, workers: int) -> dict
     if prediction.shape[0] != 7:
         raise EvaluationError("SIC_Ice-BCNet prediction must contain exactly 7 lead days")
     cell_area = spherical_cell_areas(latitude, longitude)
+    daily_extent_path, daily_extent_hash = download_cached(
+        SEA_ICE_INDEX_DAILY_URL, cache_dir, min(workers, 12)
+    )
+    active_region_areas = parse_monthly_active_region_areas(
+        daily_extent_path.read_text(encoding="utf-8-sig")
+    )
     urls: dict[str, str] = {}
     hashes: dict[str, str] = {}
     downloaded: dict[tuple[int, int], Path] = {}
@@ -325,15 +361,20 @@ def evaluate_sic(payload: dict[str, Any], cache_dir: Path, workers: int) -> dict
             urls[f"{valid_date.year}-{valid_date.month:02d}"] = url
             hashes[f"{valid_date.year}-{valid_date.month:02d}"] = digest
         observation = bilinear_regrid_masam2(downloaded[key], valid_date, latitude, longitude)
-        metrics = weighted_sic_metrics(prediction[lead], observation, cell_area)
+        metrics = weighted_sic_metrics(
+            prediction[lead], observation, cell_area, active_region_areas[valid_date.month]
+        )
         metrics["leadDay"] = lead + 1
         metrics["validDate"] = valid_date.isoformat()
         diagnostics.append(metrics)
-        rmse_values.append(float(metrics["rmsePercent"]))
-        bacc_values.append(float(metrics["baccPercent"]))
+        rmse_values.append(float(metrics["rmse"]))
+        bacc_values.append(float(metrics["bacc"]))
         valid_dates.append(valid_date.isoformat())
 
     year = str(start_date.year)
+    used_months = sorted(
+        {(start_date + dt.timedelta(days=offset + lead)).month for lead in range(7)}
+    )
     return {
         "source": "NSIDC",
         "dataKind": "EVALUATION_METRIC",
@@ -348,6 +389,20 @@ def evaluate_sic(payload: dict[str, Any], cache_dir: Path, workers: int) -> dict
             "urls": urls,
             "sha256": hashes,
         },
+        "baccReference": {
+            "datasetId": SEA_ICE_INDEX_DATASET_ID,
+            "name": "Sea Ice Index Daily Northern Hemisphere Extent",
+            "version": SEA_ICE_INDEX_VERSION,
+            "doi": SEA_ICE_INDEX_DOI,
+            "url": SEA_ICE_INDEX_DAILY_URL,
+            "sha256": daily_extent_hash,
+            "baselineYears": [1991, 2020],
+            "activeRegionRule": "maximum daily extent for each calendar month",
+            "activeRegionAreaMillionKm2": {
+                str(month): round(active_region_areas[month] / 1_000_000_000_000.0, 6)
+                for month in used_months
+            },
+        },
         "matching": {
             "predictionGrid": list(latitude.shape),
             "observationGrid": [2550, 2100],
@@ -356,8 +411,8 @@ def evaluate_sic(payload: dict[str, Any], cache_dir: Path, workers: int) -> dict
             "validDates": valid_dates,
         },
         "metricDefinitions": {
-            "RMSE": "area-weighted grid-cell RMSE, percentage points",
-            "BACC": "area-weighted balanced accuracy at SIC >= 15%, percent",
+            "RMSE": "area-weighted grid-cell RMSE of fractional SIC, range 0-1",
+            "BACC": "1 - IIEE / monthly active-region area; SIC > 15%; range normally 0-1",
         },
         "diagnostics": diagnostics,
         "records": [

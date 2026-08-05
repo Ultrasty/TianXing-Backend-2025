@@ -111,9 +111,9 @@ Content-Type: application/json
 
 后端从 `tj_sic` 读取该日期的 `SIC_Ice-BCNet` 7 天预测，从 `info_sic_latlon` 读取 384×420 模型网格；下载 NSIDC G10005 MASAM2 V2 月度 NetCDF，将每日观测双线性重投影到模型网格并屏蔽无效/陆地邻点。输出：
 
-- `{year}_RMSE`：按模型网格面积加权的 SIC 格点 RMSE，单位为百分点。
-- `{year}_BACC`：以 SIC ≥ 15% 判定海冰，按面积计算灵敏度和特异度后取均值，单位为百分比。
-- `diagnostics`：每个时效的有效日期、格点数、面积、灵敏度、特异度和 IIEE。
+- `{year}_RMSE`：按模型网格面积加权的 SIC 格点 RMSE，按现有库口径保存为 0–1 分数。
+- `{year}_BACC`：以 SIC > 15% 判定海冰，按 `1 - IIEE / 月度 active-region 面积` 计算，保存为 0–1。active-region 分母来自 NSIDC G02135 V4 在 1991–2020 年对应日历月的最大日 SIE。
+- `diagnostics`：每个时效的有效日期、格点数、有效面积、active-region 面积、灵敏度、特异度和 IIEE。
 
 `leadStartOffsetDays=0` 表示数组第一个场对应起报当天；若数据生产约定第一个场对应次日，传 `1`。不允许猜测其它偏移。
 

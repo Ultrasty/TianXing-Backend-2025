@@ -19,11 +19,24 @@ class NsidcEvaluationTests(unittest.TestCase):
     def test_area_weighted_sic_metrics(self):
         prediction = np.array([[0.8, 0.0], [0.1, 0.7]])
         observation = np.array([[1.0, 0.0], [0.9, 0.8]])
-        area = np.ones((2, 2))
-        result = MODULE.weighted_sic_metrics(prediction, observation, area)
-        self.assertAlmostEqual(result["rmsePercent"], 41.533119, places=6)
-        self.assertAlmostEqual(result["baccPercent"], 83.333333, places=6)
+        area = np.full((2, 2), 1_000_000.0)
+        result = MODULE.weighted_sic_metrics(
+            prediction, observation, area, active_region_area_m2=4_000_000.0
+        )
+        self.assertAlmostEqual(result["rmse"], 0.415331193, places=9)
+        self.assertAlmostEqual(result["bacc"], 0.75, places=9)
+        self.assertAlmostEqual(result["iieeKm2"], 1.0, places=9)
         self.assertEqual(result["validCellCount"], 4)
+
+    def test_active_region_is_monthly_maximum_extent(self):
+        content = "Year, Month, Day, Extent\n"
+        for month in range(1, 13):
+            content += f"1991,{month},1,{month}.0\n"
+            content += f"2020,{month},2,{month}.5\n"
+        content += "2021,1,1,29.0\n"
+        areas = MODULE.parse_monthly_active_region_areas(content)
+        self.assertEqual(areas[1], 1.5e12)
+        self.assertEqual(areas[12], 12.5e12)
 
     def test_sie_metrics_are_grouped_by_lead_month(self):
         rows = [

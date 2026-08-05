@@ -260,8 +260,8 @@ class EvaluationAdminApiIntegrationTests {
                 "\"matching\":{\"validDates\":[\"2023-04-22\"]}," +
                 "\"metricDefinitions\":{\"RMSE\":\"test\",\"BACC\":\"test\"}," +
                 "\"records\":[" +
-                "{\"year\":\"2023\",\"month\":\"4\",\"day\":\"22\",\"varModel\":\"2023_RMSE\",\"data\":[6.1],\"source\":\"NSIDC\"}," +
-                "{\"year\":\"2023\",\"month\":\"4\",\"day\":\"22\",\"varModel\":\"2023_BACC\",\"data\":[96.0],\"source\":\"NSIDC\"}]}");
+                "{\"year\":\"2023\",\"month\":\"4\",\"day\":\"22\",\"varModel\":\"2023_RMSE\",\"data\":[0.061],\"source\":\"NSIDC\"}," +
+                "{\"year\":\"2023\",\"month\":\"4\",\"day\":\"22\",\"varModel\":\"2023_BACC\",\"data\":[0.96],\"source\":\"NSIDC\"}]}");
         org.mockito.Mockito.when(nsidcProcess.execute(org.mockito.ArgumentMatchers.any(JsonNode.class)))
                 .thenReturn(fakeResult);
 
