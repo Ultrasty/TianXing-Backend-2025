@@ -26,14 +26,17 @@ public class EvaluationAdminController {
     private final EvaluationImportService importService;
     private final EvaluationMetadataService metadataService;
     private final EcmwfPreviewService ecmwfPreviewService;
+    private final NsidcEvaluationService nsidcEvaluationService;
 
     public EvaluationAdminController(EvaluationService evaluationService, EvaluationImportService importService,
                                      EvaluationMetadataService metadataService,
-                                     EcmwfPreviewService ecmwfPreviewService) {
+                                     EcmwfPreviewService ecmwfPreviewService,
+                                     NsidcEvaluationService nsidcEvaluationService) {
         this.evaluationService = evaluationService;
         this.importService = importService;
         this.metadataService = metadataService;
         this.ecmwfPreviewService = ecmwfPreviewService;
+        this.nsidcEvaluationService = nsidcEvaluationService;
     }
 
     @GetMapping("/meta")
@@ -101,5 +104,11 @@ public class EvaluationAdminController {
     @PostMapping(value = "/ecmwf/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
     public AdminApiResponse<Map<String, Object>> previewFromEcmwf(@RequestBody EcmwfPreviewRequest request) {
         return AdminApiResponse.success(ecmwfPreviewService.preview(request));
+    }
+
+    @PostMapping(value = "/nsidc/evaluate", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public AdminApiResponse<com.fasterxml.jackson.databind.JsonNode> evaluateFromNsidc(
+            @RequestBody NsidcEvaluationRequest request) {
+        return AdminApiResponse.success(nsidcEvaluationService.evaluate(request));
     }
 }

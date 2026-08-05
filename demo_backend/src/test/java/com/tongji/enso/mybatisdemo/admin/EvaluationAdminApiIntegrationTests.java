@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,12 +32,15 @@ class EvaluationAdminApiIntegrationTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private ObjectMapper objectMapper;
+    @MockBean private com.tongji.enso.mybatisdemo.admin.evaluation.NsidcEvaluationProcess nsidcProcess;
 
     private String loginPassword;
     private String token;
 
     @BeforeEach
     void setUp() throws Exception {
+        jdbcTemplate.update("DELETE FROM evaluation_metric_provenance");
+        jdbcTemplate.update("DELETE FROM info_sic_latlon");
         jdbcTemplate.update("DELETE FROM admin_user");
         jdbcTemplate.update("DELETE FROM obs_enso");
         jdbcTemplate.update("DELETE FROM tj_nao");
@@ -239,6 +243,44 @@ class EvaluationAdminApiIntegrationTests {
         mockMvc.perform(get("/seaice/error").param("year", "2023").param("month", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.2023_BACC[0]").value(1));
+    }
+
+    @Test
+    void computesAndPublishesTraceableNsidcSicMetrics() throws Exception {
+        jdbcTemplate.update("INSERT INTO info_sic_latlon(id,lat,lon) VALUES(?,?,?)",
+                1, "[[70,70],[71,71]]", "[[0,1],[0,1]]");
+        jdbcTemplate.update("INSERT INTO tj_sic(year,month,day,var_model,data) VALUES(?,?,?,?,?)",
+                "2023", "4", "22", "SIC_Ice-BCNet",
+                "[[[0,0],[0,0]],[[0,0],[0,0]],[[0,0],[0,0]],[[0,0],[0,0]]," +
+                        "[[0,0],[0,0]],[[0,0],[0,0]],[[0,0],[0,0]]]");
+        JsonNode fakeResult = objectMapper.readTree("{" +
+                "\"source\":\"NSIDC\",\"dataKind\":\"EVALUATION_METRIC\",\"category\":\"SIC\"," +
+                "\"predictionModel\":\"SIC_Ice-BCNet\"," +
+                "\"observation\":{\"datasetId\":\"G10005\",\"version\":\"2\",\"sha256\":{\"2023-04\":\"abc\"}}," +
+                "\"matching\":{\"validDates\":[\"2023-04-22\"]}," +
+                "\"metricDefinitions\":{\"RMSE\":\"test\",\"BACC\":\"test\"}," +
+                "\"records\":[" +
+                "{\"year\":\"2023\",\"month\":\"4\",\"day\":\"22\",\"varModel\":\"2023_RMSE\",\"data\":[6.1],\"source\":\"NSIDC\"}," +
+                "{\"year\":\"2023\",\"month\":\"4\",\"day\":\"22\",\"varModel\":\"2023_BACC\",\"data\":[96.0],\"source\":\"NSIDC\"}]}");
+        org.mockito.Mockito.when(nsidcProcess.execute(org.mockito.ArgumentMatchers.any(JsonNode.class)))
+                .thenReturn(fakeResult);
+
+        mockMvc.perform(post("/admin/evaluations/nsidc/evaluate")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\":\"SIC\",\"year\":\"2023\",\"month\":\"4\"," +
+                                "\"day\":\"22\",\"leadStartOffsetDays\":0,\"mode\":\"UPSERT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.published").value(true))
+                .andExpect(jsonPath("$.data.publication.inserted").value(2))
+                .andExpect(jsonPath("$.data.observation.datasetId").value("G10005"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM tj_sic WHERE year='2023' AND day='22' AND var_model LIKE '2023_%'",
+                Integer.class)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM evaluation_metric_provenance WHERE source='NSIDC'",
+                Integer.class)).isEqualTo(2);
     }
 
     private String login(String username, String password) throws Exception {

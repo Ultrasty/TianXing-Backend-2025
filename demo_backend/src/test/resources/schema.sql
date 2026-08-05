@@ -1,4 +1,6 @@
 DROP TABLE IF EXISTS admin_user;
+DROP TABLE IF EXISTS evaluation_metric_provenance;
+DROP TABLE IF EXISTS info_sic_latlon;
 DROP TABLE IF EXISTS obs_enso;
 DROP TABLE IF EXISTS tj_nao;
 DROP TABLE IF EXISTS tj_sic;
@@ -43,4 +45,24 @@ CREATE TABLE tj_sie (
     month VARCHAR(45) NOT NULL,
     var_model VARCHAR(45) NOT NULL,
     data VARCHAR(100000)
+);
+
+CREATE TABLE info_sic_latlon (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lat VARCHAR(100000) NOT NULL,
+    lon VARCHAR(100000) NOT NULL
+);
+
+CREATE TABLE evaluation_metric_provenance (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(16) NOT NULL,
+    record_id BIGINT NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    prediction_model VARCHAR(64) NOT NULL,
+    observation_dataset VARCHAR(64) NOT NULL,
+    observation_version VARCHAR(32) NOT NULL,
+    details VARCHAR(100000) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (category, record_id)
 );
