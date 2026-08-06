@@ -55,6 +55,13 @@ public class IndexImportService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "缺少 NOAA 抓取脚本: " + scriptFile.getAbsolutePath());
         }
 
+        if ("ENSO".equalsIgnoreCase(request.getDataset()) && !"nino34_asc".equalsIgnoreCase(request.getVarModel())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ENSO数据集在线拉取只支持 nino34_asc 模型，其余特定 AI 模型须使用【手动上传】");
+        }
+        if ("NAO".equalsIgnoreCase(request.getDataset()) && request.getVarModel() != null && !request.getVarModel().toLowerCase().contains("nao")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "NAO数据集只允许拉取 NAO 相关模型数据");
+        }
+
         List<String> command = new ArrayList<String>();
         command.add(pythonExecutable);
         command.add(scriptFile.getAbsolutePath());
@@ -66,6 +73,19 @@ public class IndexImportService {
         command.add(request.getMonth());
         command.add("--var_model");
         command.add(request.getVarModel());
+
+        if (request.getSource() != null && !request.getSource().trim().isEmpty()) {
+            command.add("--source");
+            command.add(request.getSource().trim());
+        }
+        if (request.getLeadMonths() != null && request.getLeadMonths() > 0) {
+            command.add("--lead_months");
+            command.add(String.valueOf(request.getLeadMonths()));
+        }
+        if (request.getSmoothing() != null && !request.getSmoothing().trim().isEmpty()) {
+            command.add("--smoothing");
+            command.add(request.getSmoothing().trim());
+        }
 
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(false);

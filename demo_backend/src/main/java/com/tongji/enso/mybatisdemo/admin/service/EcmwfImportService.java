@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class EcmwfImportService {
     private static final List<Integer> VALID_TIMES = Arrays.asList(0, 6, 12, 18);
-    private static final List<String> VALID_SOURCES = Arrays.asList("ecmwf", "aws", "google", "azure");
+    private static final List<String> VALID_SOURCES = Arrays.asList("ecmwf", "aws", "google", "azure", "cds");
     private static final List<String> VALID_MODELS = Arrays.asList("ifs", "aifs-single", "aifs-ens");
     private static final List<String> VALID_TYPES = Arrays.asList("fc", "pf", "em", "es", "ep");
 
@@ -139,6 +139,14 @@ public class EcmwfImportService {
             command.add("--stream");
             command.add(request.getStream().trim());
         }
+        if (!isBlank(request.getDataset())) {
+            command.add("--dataset");
+            command.add(request.getDataset().trim());
+        }
+        if (!isBlank(request.getVarModel())) {
+            command.add("--var_model");
+            command.add(request.getVarModel().trim());
+        }
         return command;
     }
 
@@ -200,10 +208,6 @@ public class EcmwfImportService {
                     + "为防止数据格式紊乱，系统已拦截；若需保存网格请选择网格类 var_model（如 grid_NAO_MCD）。");
         }
 
-        if ("grid_NAO_MCD".equalsIgnoreCase(varModel) && "msl".equalsIgnoreCase(request.getParam())) {
-            return transformPaToHpa(dataNode);
-        }
-
         return dataNode;
     }
 
@@ -215,23 +219,7 @@ public class EcmwfImportService {
         return false;
     }
 
-    private JsonNode transformPaToHpa(JsonNode node) {
-        if (node == null) return null;
-        if (node.isNumber()) {
-            double val = node.asDouble();
-            if (val > 2000.0) {
-                return objectMapper.valueToTree(val / 100.0);
-            }
-            return node;
-        } else if (node.isArray()) {
-            com.fasterxml.jackson.databind.node.ArrayNode arrayNode = objectMapper.createArrayNode();
-            for (JsonNode child : node) {
-                arrayNode.add(transformPaToHpa(child));
-            }
-            return arrayNode;
-        }
-        return node;
-    }
+
 
     private String defaultString(String value, String defaultValue) {
         return isBlank(value) ? defaultValue : value.trim();

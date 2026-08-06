@@ -8,6 +8,34 @@ public class IndexImportRequest {
     private String varModel;
     private Boolean overwrite;
 
+    private String source;
+    private Integer leadMonths;
+    private String smoothing;
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public Integer getLeadMonths() {
+        return leadMonths;
+    }
+
+    public void setLeadMonths(Integer leadMonths) {
+        this.leadMonths = leadMonths;
+    }
+
+    public String getSmoothing() {
+        return smoothing;
+    }
+
+    public void setSmoothing(String smoothing) {
+        this.smoothing = smoothing;
+    }
+
     public String getDataset() {
         return dataset;
     }
