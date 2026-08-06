@@ -101,7 +101,7 @@ def main() -> None:
     parser.add_argument("--month", required=True)
     parser.add_argument("--var_model", required=True)
     parser.add_argument("--source", default="default")
-    parser.add_argument("--lead_months", type=int, default=6)
+    parser.add_argument("--lead_months", type=int, default=12)
     parser.add_argument("--smoothing", default="raw")
     args = parser.parse_args()
 
