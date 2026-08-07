@@ -2,8 +2,10 @@ package com.tongji.enso.mybatisdemo.admin.controller;
 
 import com.tongji.enso.mybatisdemo.admin.dto.EcmwfImportRequest;
 import com.tongji.enso.mybatisdemo.admin.dto.ForecastDataRequest;
+import com.tongji.enso.mybatisdemo.admin.dto.IndexImportRequest;
 import com.tongji.enso.mybatisdemo.admin.service.EcmwfImportService;
 import com.tongji.enso.mybatisdemo.admin.service.ForecastDataService;
+import com.tongji.enso.mybatisdemo.admin.service.IndexImportService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,20 +24,20 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.tongji.enso.mybatisdemo.admin.dto.IndexImportRequest;
-import com.tongji.enso.mybatisdemo.admin.service.IndexImportService;
-
 /** 功能 2.1-2.3：更新、删除、发布预报数据。所有接口都由 /admin/** 拦截器鉴权。 */
 @RestController
 @RequestMapping("/admin/forecast-data")
 public class ForecastDataAdminController {
+
     private final ForecastDataService forecastDataService;
     private final EcmwfImportService ecmwfImportService;
     private final IndexImportService indexImportService;
 
-    public ForecastDataAdminController(ForecastDataService forecastDataService,
-                                       EcmwfImportService ecmwfImportService,
-                                       IndexImportService indexImportService) {
+    public ForecastDataAdminController(
+            ForecastDataService forecastDataService,
+            EcmwfImportService ecmwfImportService,
+            IndexImportService indexImportService
+    ) {
         this.forecastDataService = forecastDataService;
         this.ecmwfImportService = ecmwfImportService;
         this.indexImportService = indexImportService;
@@ -47,56 +49,147 @@ public class ForecastDataAdminController {
     }
 
     @GetMapping
-    public Map<String, Object> page(@RequestParam String dataset,
-                                    @RequestParam(required = false) String year,
-                                    @RequestParam(required = false) String month,
-                                    @RequestParam(required = false) String varModel,
-                                    @RequestParam(required = false) Integer page,
-                                    @RequestParam(required = false) Integer pageSize) {
-        return forecastDataService.page(dataset, year, month, varModel, page, pageSize);
+    public Map<String, Object> page(
+            @RequestParam String dataset,
+            @RequestParam(required = false) String year,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) String varModel,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize
+    ) {
+        return forecastDataService.page(
+                dataset,
+                year,
+                month,
+                varModel,
+                page,
+                pageSize
+        );
     }
 
     @GetMapping("/{id}")
-    public Map<String, Object> findOne(@PathVariable long id, @RequestParam String dataset) {
-        return forecastDataService.findOne(dataset, id);
+    public Map<String, Object> findOne(
+            @PathVariable long id,
+            @RequestParam String dataset
+    ) {
+        return forecastDataService.findOne(
+                dataset,
+                id
+        );
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@RequestBody ForecastDataRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(forecastDataService.create(request));
+    public ResponseEntity<Map<String, Object>> create(
+            @RequestBody ForecastDataRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        forecastDataService.create(
+                                request
+                        )
+                );
     }
 
     @PutMapping("/{id}")
-    public Map<String, Object> update(@PathVariable long id, @RequestBody ForecastDataRequest request) {
-        return forecastDataService.update(id, request);
+    public Map<String, Object> update(
+            @PathVariable long id,
+            @RequestBody ForecastDataRequest request
+    ) {
+        return forecastDataService.update(
+                id,
+                request
+        );
     }
 
     @DeleteMapping("/{id}")
-    public Map<String, Object> delete(@PathVariable long id, @RequestParam String dataset) {
-        forecastDataService.delete(dataset, id);
-        Map<String, Object> result = new LinkedHashMap<String, Object>();
-        result.put("message", "删除成功");
-        result.put("id", id);
+    public Map<String, Object> delete(
+            @PathVariable long id,
+            @RequestParam String dataset
+    ) {
+
+        forecastDataService.delete(
+                dataset,
+                id
+        );
+
+        Map<String, Object> result =
+                new LinkedHashMap<String, Object>();
+
+        result.put(
+                "message",
+                "删除成功"
+        );
+
+        result.put(
+                "id",
+                id
+        );
+
         return result;
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> upload(@RequestParam String dataset,
-                                                      @RequestParam String year,
-                                                      @RequestParam String month,
-                                                      @RequestParam String varModel,
-                                                      @RequestPart("file") MultipartFile file) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(forecastDataService.upload(dataset, year, month, varModel, file));
+    @PostMapping(
+            value = "/upload",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<Map<String, Object>> upload(
+            @RequestParam String dataset,
+            @RequestParam String year,
+            @RequestParam String month,
+            @RequestParam String varModel,
+            @RequestPart("file") MultipartFile file
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        forecastDataService.upload(
+                                dataset,
+                                year,
+                                month,
+                                varModel,
+                                file
+                        )
+                );
     }
 
     @PostMapping("/ecmwf")
-    public ResponseEntity<Map<String, Object>> importFromEcmwf(@RequestBody EcmwfImportRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ecmwfImportService.importForecast(request));
+    public ResponseEntity<Map<String, Object>> importFromEcmwf(
+            @RequestBody EcmwfImportRequest request
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        ecmwfImportService.importForecast(
+                                request
+                        )
+                );
     }
 
     @PostMapping("/noaa-index")
-    public ResponseEntity<Map<String, Object>> importFromNoaaIndex(@RequestBody IndexImportRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(indexImportService.importIndexFromNoaa(request));
+    public ResponseEntity<Map<String, Object>> importFromNoaaIndex(
+            @RequestBody IndexImportRequest request
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        indexImportService.importIndexFromNoaa(
+                                request
+                        )
+                );
+    }
+
+    /**
+     * 一次性重建全部历史 ENSO nino34_mean。
+     *
+     * ASC/GTC/MC 三种齐全 -> 生成或更新 mean
+     * 三种不齐全 -> 删除旧的 stale mean
+     */
+    @PostMapping("/enso/rebuild-mean")
+    public Map<String, Object> rebuildEnsoMean() {
+        return forecastDataService.rebuildEnsoMeans();
     }
 }

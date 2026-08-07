@@ -35,159 +35,482 @@ public class EnsoController {
     /**
      * For Niño3.4指数预测结果
      * 从 tj_enso 表中查询指定年、月的 Nino34（即 ENSO 指数） 数据（五种模型）
-     *
+     *某个月有哪些模型数据，就显示哪些模型。
      * @param year
      * @param month
      * @return
      */
     @GetMapping("/predictionResult/linechart")
-    public Map<String, Object> getLineChartData(@RequestParam("year") String year, @RequestParam("month") String month) {
+    public Map<String, Object> getLineChartData(
+            @RequestParam("year") String year,
+            @RequestParam("month") String month) {
+
         Gson gson = new Gson();
-        Type listType = new TypeToken<List<Double>>() {
-        }.getType();
-        int currentMonthStatic = Integer.parseInt(month);
-        int currentYearStatic = Integer.parseInt(year);
-        //map
-        Map<String, Object> resultMap = new HashMap<>();
-        Map<String, Object> title = new HashMap<>();
-        Map<String, Object> tooltip = new HashMap<>();
-        Map<String, Object> legend = new HashMap<>();
-        List<Object> legend_data = new ArrayList<>();
-        Map<String, Object> xAxis = new HashMap<>();
-        List<Object> xAxis_data = new ArrayList<>();
-        Map<String, Object> xAxis_axisLabel = new HashMap<>();
-        Map<String, Object> yAxis = new HashMap<>();
-        List<Map<String, Object>> series= new ArrayList<>();
-        Map<String, Object> series_ENSO = new HashMap<>();
-        Map<String, Object> series_EnsembleForecast = new HashMap<>();
-//        Map<String, Object> series_ENSOCross = new HashMap<>();
-        Map<String, Object> series_ENSOASC = new HashMap<>();
-        Map<String, Object> series_ENSOGTC = new HashMap<>();
 
-        String title_text="Niño 3.4 Forecast Result "+year+"-"+month;
-        String title_left="center";
-        String tooltip_trigger="axis";
-        String legend_orient="horizontal";
-        String legend_left="center";
-        String legend_bottom="5";
-        String legend_y="bottom";
-        String grid_left="3%";
-        String grid_right="4%";
-        String grid_bottom="25%";
-        String grid_containLabel="true";
-        String xAxis_type="category";
-        String xAxis_name="时间";
-        int CMonth;
-        if(currentMonthStatic-12==0){
-            CMonth = currentMonthStatic;
+        Type listType =
+                new TypeToken<List<Double>>() {}.getType();
+
+        Map<String, Object> resultMap =
+                new HashMap<>();
+
+
+        // =========================================================
+        // 1. 查询四种预测数据
+        // =========================================================
+
+        String ascJson =
+                ensoMapper.findEachPredictionsResultByMonthType(
+                        year,
+                        month,
+                        "nino34_asc"
+                );
+
+        String gtcJson =
+                ensoMapper.findEachPredictionsResultByMonthType(
+                        year,
+                        month,
+                        "nino34_gtc"
+                );
+
+        String mcJson =
+                ensoMapper.findEachPredictionsResultByMonthType(
+                        year,
+                        month,
+                        "nino34_mc"
+                );
+
+        String meanJson =
+                ensoMapper.findEachPredictionsResultByMonthType(
+                        year,
+                        month,
+                        "nino34_mean"
+                );
+
+
+        // =========================================================
+        // 2. JSON 转 List
+        //
+        // 数据不存在时使用空列表，
+        // 避免 NullPointerException
+        // =========================================================
+
+        List<Double> ascData =
+                ascJson == null || ascJson.isBlank()
+                        ? new ArrayList<>()
+                        : gson.fromJson(ascJson, listType);
+
+        List<Double> gtcData =
+                gtcJson == null || gtcJson.isBlank()
+                        ? new ArrayList<>()
+                        : gson.fromJson(gtcJson, listType);
+
+        List<Double> mcData =
+                mcJson == null || mcJson.isBlank()
+                        ? new ArrayList<>()
+                        : gson.fromJson(mcJson, listType);
+
+        List<Double> meanData =
+                meanJson == null || meanJson.isBlank()
+                        ? new ArrayList<>()
+                        : gson.fromJson(meanJson, listType);
+
+
+        // 防止 JSON 内容本身是 null
+        if (ascData == null) {
+            ascData = new ArrayList<>();
         }
-        else{
-            CMonth=12+currentMonthStatic;
+
+        if (gtcData == null) {
+            gtcData = new ArrayList<>();
         }
-        int currentYear1;
-        if(currentMonthStatic==12){
-            currentYear1=Integer.parseInt(year);
+
+        if (mcData == null) {
+            mcData = new ArrayList<>();
         }
-        else{
-            currentYear1=Integer.parseInt(year)-1;
+
+        if (meanData == null) {
+            meanData = new ArrayList<>();
         }
-        int currentMonth1=CMonth-11;
-        //xAxis处理
-        for(int j=11;j>=0;j--){
-
-            if(currentMonth1<13){
-                xAxis_data.add(currentMonth1+"-"+currentYear1);
-                currentMonth1++;
-            }
-            else{
-                currentMonth1=1;
-                currentYear1+=1;
-                xAxis_data.add(currentMonth1+"-"+currentYear1);
-                currentMonth1++;
-            }
-
-        }
-        legend_data.add("ENSO-MC");
-//        legend_data.add("ENSO-Cross");
-        legend_data.add("ENSO-ASC");
-        legend_data.add("ENSO-GTC");
-        legend_data.add("ENSO-MEAN");
-        int xAxis_interval=2;
-        String yAxis_type="value";
-        String series_EnsembleForecast_name=("ENSO-MC");
-//        String series_ENSOCross_name=("ENSO-Cross");
-        String series_ENSOASC_name=("ENSO-ASC");
-        String series_ENSOGTC_name=("ENSO-GTC");
-        String series_ENSO_name=("Esemble-mean");
-        String series_type=("line");
-
-        title.put("text", title_text);
-        title.put("left", title_left);
-        tooltip.put("trigger", tooltip_trigger);
-        legend.put("y", legend_y);
-        legend.put("orient",legend_orient);
-        legend.put("left",legend_left);
-        legend.put("bottom",legend_bottom);
-        xAxis.put("type",xAxis_type);
-        xAxis.put("boundaryGap",xAxis_name);
-        xAxis.put("data",xAxis_data);
-        xAxis.put("axisLabel",xAxis_axisLabel);
-        xAxis_axisLabel.put("interval",xAxis_interval);
-        yAxis.put("type",yAxis_type);
-        series.add(series_ENSO);
-        series.add(series_EnsembleForecast);
-//        series.add(series_ENSOCross);
-        series.add(series_ENSOASC);
-        series.add(series_ENSOGTC);
-        series_ENSO.put("name",series_ENSO_name);
-        series_ENSO.put("type",series_type);
-        series_EnsembleForecast.put("name",series_EnsembleForecast_name);
-        series_EnsembleForecast.put("type",series_type);
-//        series_ENSOCross.put("name",series_ENSOCross_name);
-//        series_ENSOCross.put("type",series_type);
-        series_ENSOASC.put("name",series_ENSOASC_name);
-        series_ENSOASC.put("type",series_type);
-        series_ENSOGTC.put("name",series_ENSOGTC_name);
-        series_ENSOGTC.put("type",series_type);
 
 
+        // =========================================================
+        // 3. 如果数据库没有 mean，
+        //    且 ASC、GTC、MC 三种数据全部存在，
+        //    临时计算 mean
+        //
+        // 当前阶段只用于网页显示，
+        // 暂时不写数据库。
+        // =========================================================
 
-        String result1 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_asc");  // 从数据库中查询数据
-        List<Object> list1 = gson.fromJson(result1, listType);  // 将结果字符串转换为列表
+        if (meanData.isEmpty()
+                && !ascData.isEmpty()
+                && !gtcData.isEmpty()
+                && !mcData.isEmpty()) {
 
-        String result2 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_gtc");
-        List<Object> list2 = gson.fromJson(result2, listType);
+            int size =
+                    Math.min(
+                            ascData.size(),
+                            Math.min(
+                                    gtcData.size(),
+                                    mcData.size()
+                            )
+                    );
 
+            for (int i = 0; i < size; i++) {
 
-//        String result3 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_cross");
-//        List<Object> list3 = gson.fromJson(result3, listType);
+                double mean =
+                        (
+                                ascData.get(i)
+                                        + gtcData.get(i)
+                                        + mcData.get(i)
+                        ) / 3.0;
 
-        String result4 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mc");
-        List<Object> list4 = gson.fromJson(result4, listType);
-
-        String result5 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mean");
-        List<Object> list5 = gson.fromJson(result5, listType);
-
-        if(list5 == null) {
-            list5 = new ArrayList<>();
-            int m = Math.min(list1.size() , Math.min(list2.size() , list4.size()));
-            for(int i=0;i<m;i++){
-                list5.add(((double)list1.get(i) + (double)list2.get(i) + (double)list4.get(i) ) / 3);
+                meanData.add(mean);
             }
         }
 
-        series_ENSO.put("data",list5);
-        series_EnsembleForecast.put("data",list4);
-//        series_ENSOCross.put("data",list3);
-        series_ENSOASC.put("data",list1);
-        series_ENSOGTC.put("data",list2);
-        //最后的总和
-        resultMap.put("title",title);
-        resultMap.put("tooltip",tooltip);
-        resultMap.put("legend",legend);
-        resultMap.put("xAxis",xAxis);
-        resultMap.put("yAxis",yAxis);
-        resultMap.put("series",series);
+
+        // =========================================================
+        // 4. 标题
+        // =========================================================
+
+        Map<String, Object> title =
+                new HashMap<>();
+
+        title.put(
+                "text",
+                "Niño 3.4 Forecast Result "
+                        + year
+                        + "-"
+                        + month
+        );
+
+        title.put(
+                "left",
+                "center"
+        );
+
+        resultMap.put(
+                "title",
+                title
+        );
+
+
+        // =========================================================
+        // 5. tooltip
+        // =========================================================
+
+        Map<String, Object> tooltip =
+                new HashMap<>();
+
+        tooltip.put(
+                "trigger",
+                "axis"
+        );
+
+        resultMap.put(
+                "tooltip",
+                tooltip
+        );
+
+
+        // =========================================================
+        // 6. X 轴
+        //
+        // 这里暂时保留项目原来的 12 个月生成逻辑，
+        // 日期方向问题下一步再单独处理。
+        // =========================================================
+
+        List<String> xAxisData =
+                new ArrayList<>();
+
+        int currentMonth =
+                Integer.parseInt(month);
+
+        int currentYear =
+                Integer.parseInt(year);
+
+        int cMonth;
+
+        if (currentMonth - 12 == 0) {
+            cMonth = currentMonth;
+        } else {
+            cMonth = 12 + currentMonth;
+        }
+
+        int xYear;
+
+        if (currentMonth == 12) {
+            xYear = currentYear;
+        } else {
+            xYear = currentYear - 1;
+        }
+
+        int xMonth =
+                cMonth - 11;
+
+        for (int j = 11; j >= 0; j--) {
+
+            if (xMonth < 13) {
+
+                xAxisData.add(
+                        xMonth + "-" + xYear
+                );
+
+                xMonth++;
+
+            } else {
+
+                xMonth = 1;
+                xYear++;
+
+                xAxisData.add(
+                        xMonth + "-" + xYear
+                );
+
+                xMonth++;
+            }
+        }
+
+
+        Map<String, Object> xAxis =
+                new HashMap<>();
+
+        xAxis.put(
+                "type",
+                "category"
+        );
+
+        xAxis.put(
+                "name",
+                "时间"
+        );
+
+        xAxis.put(
+                "data",
+                xAxisData
+        );
+
+        Map<String, Object> axisLabel =
+                new HashMap<>();
+
+        axisLabel.put(
+                "interval",
+                2
+        );
+
+        xAxis.put(
+                "axisLabel",
+                axisLabel
+        );
+
+        resultMap.put(
+                "xAxis",
+                xAxis
+        );
+
+
+        // =========================================================
+        // 7. Y 轴
+        // =========================================================
+
+        Map<String, Object> yAxis =
+                new HashMap<>();
+
+        yAxis.put(
+                "type",
+                "value"
+        );
+
+        resultMap.put(
+                "yAxis",
+                yAxis
+        );
+
+
+        // =========================================================
+        // 8. 动态创建折线
+        //
+        // 哪个模型有数据才创建哪个 series。
+        // =========================================================
+
+        List<Map<String, Object>> series =
+                new ArrayList<>();
+
+        List<String> legendData =
+                new ArrayList<>();
+
+
+        // ---------------- ASC ----------------
+
+        if (!ascData.isEmpty()) {
+
+            Map<String, Object> ascSeries =
+                    new HashMap<>();
+
+            ascSeries.put(
+                    "name",
+                    "ENSO-ASC"
+            );
+
+            ascSeries.put(
+                    "type",
+                    "line"
+            );
+
+            ascSeries.put(
+                    "data",
+                    ascData
+            );
+
+            series.add(
+                    ascSeries
+            );
+
+            legendData.add(
+                    "ENSO-ASC"
+            );
+        }
+
+
+        // ---------------- GTC ----------------
+
+        if (!gtcData.isEmpty()) {
+
+            Map<String, Object> gtcSeries =
+                    new HashMap<>();
+
+            gtcSeries.put(
+                    "name",
+                    "ENSO-GTC"
+            );
+
+            gtcSeries.put(
+                    "type",
+                    "line"
+            );
+
+            gtcSeries.put(
+                    "data",
+                    gtcData
+            );
+
+            series.add(
+                    gtcSeries
+            );
+
+            legendData.add(
+                    "ENSO-GTC"
+            );
+        }
+
+
+        // ---------------- MC ----------------
+
+        if (!mcData.isEmpty()) {
+
+            Map<String, Object> mcSeries =
+                    new HashMap<>();
+
+            mcSeries.put(
+                    "name",
+                    "ENSO-MC"
+            );
+
+            mcSeries.put(
+                    "type",
+                    "line"
+            );
+
+            mcSeries.put(
+                    "data",
+                    mcData
+            );
+
+            series.add(
+                    mcSeries
+            );
+
+            legendData.add(
+                    "ENSO-MC"
+            );
+        }
+
+
+        // ---------------- MEAN ----------------
+
+        if (!meanData.isEmpty()) {
+
+            Map<String, Object> meanSeries =
+                    new HashMap<>();
+
+            meanSeries.put(
+                    "name",
+                    "ENSO-MEAN"
+            );
+
+            meanSeries.put(
+                    "type",
+                    "line"
+            );
+
+            meanSeries.put(
+                    "data",
+                    meanData
+            );
+
+            series.add(
+                    meanSeries
+            );
+
+            legendData.add(
+                    "ENSO-MEAN"
+            );
+        }
+
+
+        // =========================================================
+        // 9. legend
+        // =========================================================
+
+        Map<String, Object> legend =
+                new HashMap<>();
+
+        legend.put(
+                "data",
+                legendData
+        );
+
+        legend.put(
+                "orient",
+                "horizontal"
+        );
+
+        legend.put(
+                "left",
+                "center"
+        );
+
+        legend.put(
+                "bottom",
+                "5"
+        );
+
+        resultMap.put(
+                "legend",
+                legend
+        );
+
+
+        // =========================================================
+        // 10. series
+        // =========================================================
+
+        resultMap.put(
+                "series",
+                series
+        );
+
         return resultMap;
     }
 
@@ -931,36 +1254,141 @@ public class EnsoController {
         return result;
     }
 
+
+    /**
+     * 把 tj_enso 数据转换成 yyyy-MM 的月份集合。
+     */
+    private Set<String> toEnsoMonthSet(
+            List<Tj_enso> data
+    ) {
+
+        Set<String> months =
+                new HashSet<>();
+
+        if (data == null) {
+            return months;
+        }
+
+        for (Tj_enso item : data) {
+
+            try {
+
+                int year =
+                        Integer.parseInt(
+                                item.getYear()
+                        );
+
+                int month =
+                        Integer.parseInt(
+                                item.getMonth()
+                        );
+
+                if (month >= 1 && month <= 12) {
+
+                    months.add(
+                            String.format(
+                                    "%04d-%02d",
+                                    year,
+                                    month
+                            )
+                    );
+                }
+
+            } catch (NumberFormatException ignored) {
+
+                // 数据库中年月格式非法时跳过
+            }
+        }
+
+        return months;
+    }
     /**
      * 初始化：返回可选年、月范围 linechart
      */
     @GetMapping("/linechart/getInitData")
     @ApiOperation(value = "初始化：返回可选年、月范围 linechart", notes = "返回的是可查询年月")
-    public Map<String, Object> getLinechartInitMonth()
-    {
-        List<Tj_enso> ensoData = ensoMapper.findTj_ensoInfoByType("nino34_asc");
+    public Map<String, Object> getLinechartInitMonth() {
 
-        String earliestDate = null;
-        String latestDate = null;
+        List<Tj_enso> ascData =
+                ensoMapper.findTj_ensoInfoByType("nino34_asc");
 
-        for (Tj_enso enso : ensoData) {
-            int year = Integer.parseInt(enso.getYear());
-            int month = Integer.parseInt(enso.getMonth());
-            if (earliestDate == null || year < Integer.parseInt(earliestDate.split("-")[0]) || (year == Integer.parseInt(earliestDate.split("-")[0]) && month < Integer.parseInt(earliestDate.split("-")[1]))) {
-                earliestDate = year + "-" + month;
-            }
-            if (latestDate == null || year > Integer.parseInt(latestDate.split("-")[0]) || (year == Integer.parseInt(latestDate.split("-")[0]) && month > Integer.parseInt(latestDate.split("-")[1]))) {
-                latestDate = year + "-" + month;
-            }
+        List<Tj_enso> gtcData =
+                ensoMapper.findTj_ensoInfoByType("nino34_gtc");
+
+        List<Tj_enso> mcData =
+                ensoMapper.findTj_ensoInfoByType("nino34_mc");
+
+        List<Tj_enso> meanData =
+                ensoMapper.findTj_ensoInfoByType("nino34_mean");
+
+
+        // 使用 Set 自动去重
+        Set<String> availableMonths =
+                new HashSet<>();
+
+        // 求并集：任意模型有数据，这个月就可用
+        availableMonths.addAll(
+                toEnsoMonthSet(ascData)
+        );
+
+        availableMonths.addAll(
+                toEnsoMonthSet(gtcData)
+        );
+
+        availableMonths.addAll(
+                toEnsoMonthSet(mcData)
+        );
+
+        availableMonths.addAll(
+                toEnsoMonthSet(meanData)
+        );
+
+
+        // yyyy-MM 格式可以直接按字符串排序
+        List<String> sortedMonths =
+                new ArrayList<>(availableMonths);
+
+        Collections.sort(sortedMonths);
+
+
+        Map<String, Object> result =
+                new HashMap<>();
+
+        // 新增：真正可用的月份列表
+        result.put(
+                "availableMonths",
+                sortedMonths
+        );
+
+
+        // 暂时保留旧字段，兼容现有前端
+        if (!sortedMonths.isEmpty()) {
+
+            result.put(
+                    "earliestDate",
+                    sortedMonths.get(0)
+            );
+
+            result.put(
+                    "latestDate",
+                    sortedMonths.get(
+                            sortedMonths.size() - 1
+                    )
+            );
+
+        } else {
+
+            result.put(
+                    "earliestDate",
+                    null
+            );
+
+            result.put(
+                    "latestDate",
+                    null
+            );
         }
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-M");  // YearMonth 无法直接解析形如 xxxx-x
 
-        YearMonth latestYearMonth = YearMonth.parse(latestDate, dateFormatter);
-        YearMonth earliestYearMonth = YearMonth.parse(earliestDate, dateFormatter);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("earliestDate", earliestYearMonth);
-        result.put("latestDate", latestYearMonth);
         return result;
     }
 

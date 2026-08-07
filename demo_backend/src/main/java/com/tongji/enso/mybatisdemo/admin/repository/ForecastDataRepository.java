@@ -79,12 +79,16 @@ public class ForecastDataRepository {
         List<Object> params = new ArrayList<Object>();
         params.add(id);
         params.addAll(dataset.getForecastModels());
+
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT `id`, `year`, `month`, `var_model`, `data` FROM `" + dataset.getTableName() + "` " +
                         "WHERE `id` = ? AND `var_model` IN (" + placeholders(dataset.getForecastModels().size()) + ") LIMIT 1",
                 params.toArray()
         );
-        return rows.isEmpty() ? null : rows.get(0);
+
+        return rows.isEmpty()
+                ? null
+                : rows.get(0);
     }
 
     public boolean existsNaturalKey(ForecastDataset dataset,
@@ -92,31 +96,74 @@ public class ForecastDataRepository {
                                     String month,
                                     String varModel,
                                     Long excludeId) {
+
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM `" + dataset.getTableName() + "` WHERE `year` = ? AND `month` = ? AND `var_model` = ?"
         );
+
         List<Object> params = new ArrayList<Object>();
         params.add(year);
         params.add(month);
         params.add(varModel);
+
         if (excludeId != null) {
             sql.append(" AND `id` <> ?");
             params.add(excludeId);
         }
-        Integer count = jdbcTemplate.queryForObject(sql.toString(), params.toArray(), Integer.class);
-        return count != null && count > 0;
+
+        Integer count = jdbcTemplate.queryForObject(
+                sql.toString(),
+                params.toArray(),
+                Integer.class
+        );
+
+        return count != null
+                && count > 0;
     }
 
     public Map<String, Object> findByNaturalKey(ForecastDataset dataset,
                                                 String year,
                                                 String month,
                                                 String varModel) {
+
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT `id`, `year`, `month`, `var_model`, `data` FROM `" + dataset.getTableName() + "` " +
                         "WHERE `year` = ? AND `month` = ? AND `var_model` = ? LIMIT 1",
-                year, month, varModel
+                year,
+                month,
+                varModel
         );
-        return rows.isEmpty() ? null : rows.get(0);
+
+        return rows.isEmpty()
+                ? null
+                : rows.get(0);
+    }
+
+    /**
+     * 返回指定 var_model 集合涉及到的全部 distinct year/month。
+     * 主要用于历史 ENSO mean 重建。
+     */
+    public List<Map<String, Object>> findDistinctYearMonths(
+            ForecastDataset dataset,
+            List<String> varModels
+    ) {
+
+        if (varModels == null || varModels.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Object> params =
+                new ArrayList<Object>(
+                        varModels
+                );
+
+        return jdbcTemplate.queryForList(
+                "SELECT DISTINCT `year`, `month` " +
+                        "FROM `" + dataset.getTableName() + "` " +
+                        "WHERE `var_model` IN (" + placeholders(varModels.size()) + ") " +
+                        "ORDER BY CAST(`year` AS UNSIGNED), CAST(`month` AS UNSIGNED)",
+                params.toArray()
+        );
     }
 
     public long insert(ForecastDataset dataset,
@@ -124,18 +171,38 @@ public class ForecastDataRepository {
                        String month,
                        String varModel,
                        String data) {
-        final String sql = "INSERT INTO `" + dataset.getTableName() + "` (`year`, `month`, `var_model`, `data`) VALUES (?, ?, ?, ?)";
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, year);
-            ps.setString(2, month);
-            ps.setString(3, varModel);
-            ps.setString(4, data);
-            return ps;
-        }, keyHolder);
-        Number key = keyHolder.getKey();
-        return key == null ? -1L : key.longValue();
+
+        final String sql =
+                "INSERT INTO `" + dataset.getTableName() + "` (`year`, `month`, `var_model`, `data`) VALUES (?, ?, ?, ?)";
+
+        KeyHolder keyHolder =
+                new GeneratedKeyHolder();
+
+        jdbcTemplate.update(
+                connection -> {
+
+                    PreparedStatement ps =
+                            connection.prepareStatement(
+                                    sql,
+                                    Statement.RETURN_GENERATED_KEYS
+                            );
+
+                    ps.setString(1, year);
+                    ps.setString(2, month);
+                    ps.setString(3, varModel);
+                    ps.setString(4, data);
+
+                    return ps;
+                },
+                keyHolder
+        );
+
+        Number key =
+                keyHolder.getKey();
+
+        return key == null
+                ? -1L
+                : key.longValue();
     }
 
     public int update(ForecastDataset dataset,
@@ -144,13 +211,17 @@ public class ForecastDataRepository {
                       String month,
                       String varModel,
                       String data) {
-        List<Object> params = new ArrayList<Object>();
+
+        List<Object> params =
+                new ArrayList<Object>();
+
         params.add(year);
         params.add(month);
         params.add(varModel);
         params.add(data);
         params.add(id);
         params.addAll(dataset.getForecastModels());
+
         return jdbcTemplate.update(
                 "UPDATE `" + dataset.getTableName() + "` SET `year` = ?, `month` = ?, `var_model` = ?, `data` = ? " +
                         "WHERE `id` = ? AND `var_model` IN (" + placeholders(dataset.getForecastModels().size()) + ")",
@@ -158,10 +229,17 @@ public class ForecastDataRepository {
         );
     }
 
-    public int delete(ForecastDataset dataset, long id) {
-        List<Object> params = new ArrayList<Object>();
+    public int delete(ForecastDataset dataset,
+                      long id) {
+
+        List<Object> params =
+                new ArrayList<Object>();
+
         params.add(id);
-        params.addAll(dataset.getForecastModels());
+        params.addAll(
+                dataset.getForecastModels()
+        );
+
         return jdbcTemplate.update(
                 "DELETE FROM `" + dataset.getTableName() + "` WHERE `id` = ? AND `var_model` IN (" +
                         placeholders(dataset.getForecastModels().size()) + ")",
@@ -170,10 +248,17 @@ public class ForecastDataRepository {
     }
 
     private String placeholders(int size) {
-        return String.join(",", Collections.nCopies(size, "?"));
+        return String.join(
+                ",",
+                Collections.nCopies(
+                        size,
+                        "?"
+                )
+        );
     }
 
     private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+        return value == null
+                || value.trim().isEmpty();
     }
 }
