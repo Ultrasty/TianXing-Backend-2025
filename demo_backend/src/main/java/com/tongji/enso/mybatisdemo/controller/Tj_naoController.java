@@ -227,113 +227,103 @@ public class Tj_naoController {
      @GetMapping("/initialize/naoPrediction")
 
      @ApiOperation(notes = "初始化预报结果折线图，返回可查询年月", value = "初始化预报结果折线图")
-     public Map<String, Object> initialNAOPrediction(){
-         logger.info("Received request for /nao/initialize/naoPrediction");
-         List<Obs_nao> naoList = obs_naoservice.findNAOByModel("index_NAO_MCD");
-         Map<String, Object> naoMap=new LinkedHashMap<>();
-         Map<String,Object> result=new LinkedHashMap<>();
+     public Map<String, Object> initialNAOPrediction() {
 
-         // 返回最早可查询年月和最晚可查询年月
-         String end_year=naoList.get(naoList.size()-1).getYear();
-         result.put("start_year",naoList.get(0).getYear());
-         result.put("start_month",naoList.get(0).getMonth());
-         result.put("end_year",naoList.get(naoList.size()-1).getYear());
-         //result.put("end_month","7");
-         // 修改后 (动态获取)
-         String lastMonth = naoList.get(naoList.size()-1).getMonth();
-         result.put("end_month", lastMonth);
+         List<Tj_nao> naoList =
+                 tj_naoservice.findNAOByModel(
+                         "index_NAO_MCD"
+                 );
 
-         // 处理返回数据格式
-         Map<String, Object> title=new LinkedHashMap<>();
-         //title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", end_year, "7", end_year, "12"));
-         // 修改后 (动态月份)
-         int startMonth = Integer.parseInt(lastMonth);
-         int endMonth = (startMonth + 5) % 12;
-         endMonth = endMonth == 0 ? 12 : endMonth; // 处理12月边界
-         title.put("text",String.format("%s年%s月~%s年%s月 NAOI指数预测结果", 
-                 end_year, lastMonth, 
-                 end_year, String.valueOf(endMonth)));
-         title.put("left","center");
-         naoMap.put("title",title);
-         Map<String, Object> tooltip=new LinkedHashMap<>();
-         naoMap.put("tooltip",tooltip);
-         Map<String, Object> xAxis=new LinkedHashMap<>();
-         xAxis.put("type","category");
-         xAxis.put("name","时间");
-         List<String> month_data=new ArrayList<>();
-         String[] chinese_month = {"一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"};
-         int temp = 7;
-         for(int i=0; i<6; i++) {
-             month_data.add(chinese_month[temp - 1]);
-             temp++;
-             if(temp > 12){
-                 temp = temp - 12;
+         Set<String> availableMonths =
+                 new HashSet<>();
+
+         if (naoList != null) {
+
+             for (Tj_nao item : naoList) {
+
+                 try {
+
+                     int year =
+                             Integer.parseInt(
+                                     item.getYear()
+                             );
+
+                     int month =
+                             Integer.parseInt(
+                                     item.getMonth()
+                             );
+
+                     if (month >= 1 && month <= 12) {
+
+                         availableMonths.add(
+                                 String.format(
+                                         "%04d-%02d",
+                                         year,
+                                         month
+                                 )
+                         );
+                     }
+
+                 } catch (Exception ignored) {
+                 }
              }
          }
-         xAxis.put("data",month_data);
-         naoMap.put("xAxis",xAxis);
-         Map<String,Object> yAxis=new LinkedHashMap<>();
-         yAxis.put("name","冬季NAOI");
-         yAxis.put("nameLocation","center");
-         Map<String,Object> nameTextStyle=new LinkedHashMap<>();
-         nameTextStyle.put("frontSize",16);
-         int[] padding=new int[4];
-         padding[0]=0;
-         padding[1]=0;
-         padding[2]=15;
-         padding[3]=0;
-         nameTextStyle.put("padding",padding);
-         String p="nameTextStyle";
-         yAxis.put(p,nameTextStyle);
-         yAxis.put("type","value");
-         naoMap.put("yAxis",yAxis);
-         Map<String,Object> legend=new LinkedHashMap<>();
-         String []legend_data= new String[2];
-         legend_data[0]="观测值";
-         legend_data[1]="NAO-MCR";
-         legend.put("data",legend_data);
-         legend.put("orient","horizontal");
-         legend.put("left","center");
-         legend.put("bottom","5");
-         naoMap.put("legend",legend);
 
-         // 按最晚可查询年月查询预报数据和观测数据
-         Tj_nao preResult = tj_naoservice.findPredictionByMonthAndModel(end_year,"7");
-         Obs_nao obsResult = obs_naoservice.findObservationByMonthAndModel(end_year,"1");
-         String jsonString;
-         ObjectMapper objectMapper=new ObjectMapper();
-         double []pre_data = new double[6];
-         double []obs_data = new double[6];
-         double []data = null;
-         try{
-             jsonString = preResult.getData();
-             pre_data = objectMapper.readValue(jsonString,double[].class);
-             jsonString = obsResult.getData();
-             data=objectMapper.readValue(jsonString,double[].class);
-             for(int i = 0; i < 6; i++){
-                 obs_data[i] = data[6 + i];
-             }
-         }catch (JsonProcessingException e){
-             e.printStackTrace();
+
+         List<String> sortedMonths =
+                 new ArrayList<>(
+                         availableMonths
+                 );
+
+         Collections.sort(
+                 sortedMonths
+         );
+
+
+         Map<String, Object> result =
+                 new LinkedHashMap<>();
+
+         result.put(
+                 "availableMonths",
+                 sortedMonths
+         );
+
+
+         if (!sortedMonths.isEmpty()) {
+
+             String start =
+                     sortedMonths.get(0);
+
+             String end =
+                     sortedMonths.get(
+                             sortedMonths.size() - 1
+                     );
+
+             result.put(
+                     "start",
+                     start
+             );
+
+             result.put(
+                     "end",
+                     end
+             );
+
+         } else {
+
+             result.put(
+                     "start",
+                     null
+             );
+
+             result.put(
+                     "end",
+                     null
+             );
          }
 
-         List<Map<String,Object>> series = new ArrayList<>();
-         Map<String,Object> obs_Data=new LinkedHashMap<>();
-         Map<String,Object> pre_Data=new LinkedHashMap<>();
-         obs_Data.put("name","观测值");
-         obs_Data.put("type","line");
-         obs_Data.put("data",obs_data);
-         series.add(obs_Data);
-         pre_Data.put("name","NAO-MCR");
-         pre_Data.put("type","line");
-         pre_Data.put("data",pre_data);
-         series.add(pre_Data);
-         naoMap.put("series",series);
 
-         result.put("option",naoMap);
-         result.put("description","描述暂无");
          return result;
-         
      }
 
     /**
@@ -343,35 +333,101 @@ public class Tj_naoController {
      */
     @GetMapping("/initialize/naoGrid")
     @ApiOperation(notes = "初始化预报结果折模块图，返回可查询年月", value = "初始化预报结果模块图")
-     public Map<String, Object> initialNAOGrid(){
-        List<Imgs> imgsList = imgsservice.findAllByType("NAO");
-        Map<String, Object> naoMap=new HashMap<>();
+    public Map<String, Object> initialNAOGrid() {
 
-        // 返回最早查询年月和最晚查询年月
-        String end_year=imgsList.get(imgsList.size()-1).getYear();
-        String end_month=imgsList.get(imgsList.size()-1).getMonth();
-        naoMap.put("start_year",imgsList.get(0).getYear());
-        naoMap.put("start_month",imgsList.get(0).getMonth());
-        naoMap.put("end_year",end_year);
-        naoMap.put("end_month",end_month);
+        List<Imgs> imgsList =
+                imgsservice.findAllByType(
+                        "NAO"
+                );
 
-        // 按最晚查询年月查询图片地址
-        String data = imgsservice.findNAOImgByMonth(end_year,end_month);
-        int index = 0;
-        List<String> naoList=new ArrayList<>();
-        for(int i = 0; i<data.length();i++){
-            char c = data.charAt(i);
-            // 以逗号为分隔符分割图片地址
-            if(c == ','){
-                naoList.add(data.substring(index,i));
-                index = i + 1;
+
+        Set<String> availableMonths =
+                new HashSet<>();
+
+
+        if (imgsList != null) {
+
+            for (Imgs item : imgsList) {
+
+                try {
+
+                    int year =
+                            Integer.parseInt(
+                                    item.getYear()
+                            );
+
+                    int month =
+                            Integer.parseInt(
+                                    item.getMonth()
+                            );
+
+                    if (month >= 1 && month <= 12) {
+
+                        availableMonths.add(
+                                String.format(
+                                        "%04d-%02d",
+                                        year,
+                                        month
+                                )
+                        );
+                    }
+
+                } catch (Exception ignored) {
+                }
             }
         }
-        naoList.add(data.substring(index));
-        naoMap.put("data",naoList);
 
-        return naoMap;
-     }
+
+        List<String> sortedMonths =
+                new ArrayList<>(
+                        availableMonths
+                );
+
+        Collections.sort(
+                sortedMonths
+        );
+
+
+        Map<String, Object> result =
+                new LinkedHashMap<>();
+
+
+        result.put(
+                "availableMonths",
+                sortedMonths
+        );
+
+
+        if (!sortedMonths.isEmpty()) {
+
+            result.put(
+                    "start",
+                    sortedMonths.get(0)
+            );
+
+            result.put(
+                    "end",
+                    sortedMonths.get(
+                            sortedMonths.size() - 1
+                    )
+            );
+
+        } else {
+
+            result.put(
+                    "start",
+                    null
+            );
+
+            result.put(
+                    "end",
+                    null
+            );
+        }
+
+
+        return result;
+    }
 
     /**
      * 初始化预测结果误差分布图
