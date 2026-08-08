@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tongji.enso.mybatisdemo.mapper.online.SysUserMapper">
+
+    <resultMap type="com.tongji.enso.mybatisdemo.entity.online.SysUser" id="SysUserResult">
+        <id     property="userId"       column="user_id"      />
+        <result property="userName"     column="user_name"    />
+        <result property="nickName"     column="nick_name"    />
+        <result property="password"     column="password"     />
+        <result property="status"       column="status"       />
+        <result property="createTime"   column="create_time"  />
+    </resultMap>
+
+    <sql id="selectSysUserVo">
+        select user_id, user_name, nick_name, password, status, create_time
+        from sys_user
+    </sql>
+
+    <select id="selectUserByUserName" parameterType="String" resultMap="SysUserResult">
+        <include refid="selectSysUserVo"/>
+        where user_name = #{userName}
+    </select>
+
+    <select id="selectUserById" parameterType="Long" resultMap="SysUserResult">
+        <include refid="selectSysUserVo"/>
+        where user_id = #{userId}
+    </select>
+
+</mapper>
