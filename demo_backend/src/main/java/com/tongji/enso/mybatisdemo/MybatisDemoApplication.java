@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("com.tongji.enso.mybatisdemo.mapper.online")
+@MapperScan({"com.tongji.enso.mybatisdemo.mapper.online", "com.tongji.enso.mybatisdemo.mapper.admin"})
 public class MybatisDemoApplication {
 
     public static void main(String[] args) {
