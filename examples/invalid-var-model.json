@@ -1,0 +1,14 @@
+{
+  "source": "ECMWF",
+  "mode": "REJECT",
+  "category": "SIC",
+  "records": [
+    {
+      "year": "2026",
+      "month": "7",
+      "day": "1",
+      "varModel": "SIC_Ice-BCNet",
+      "data": [0.12]
+    }
+  ]
+}

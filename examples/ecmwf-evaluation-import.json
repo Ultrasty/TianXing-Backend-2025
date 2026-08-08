@@ -1,0 +1,14 @@
+{
+  "source": "ECMWF",
+  "mode": "UPSERT",
+  "category": "SIC",
+  "records": [
+    {
+      "year": "2026",
+      "month": "7",
+      "day": "1",
+      "varModel": "2026_RMSE",
+      "data": [0.12, 0.18, 0.21]
+    }
+  ]
+}
