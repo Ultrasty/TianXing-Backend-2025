@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tongji.enso.mybatisdemo.entity.admin.AdminApiResponse;
 import com.tongji.enso.mybatisdemo.service.admin.AdminTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -16,6 +17,9 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     private final AdminTokenService adminTokenService;
     private final ObjectMapper objectMapper;
 
+    @Value("${admin.auth.enabled:true}")
+    private boolean authEnabled;
+
     @Autowired
     public AdminAuthInterceptor(AdminTokenService adminTokenService, ObjectMapper objectMapper) {
         this.adminTokenService = adminTokenService;
@@ -24,6 +28,10 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
+        if (!authEnabled) {
+            return true;
+        }
+
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
