@@ -2,6 +2,8 @@ package com.tongji.enso.mybatisdemo.admin.evaluation;
 
 import com.tongji.enso.mybatisdemo.admin.common.AdminApiResponse;
 import com.tongji.enso.mybatisdemo.admin.common.PageResult;
+import com.tongji.enso.mybatisdemo.admin.dto.EcmwfPreviewRequest;
+import com.tongji.enso.mybatisdemo.admin.service.EcmwfImportService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,12 +27,15 @@ public class EvaluationAdminController {
     private final EvaluationService evaluationService;
     private final EvaluationImportService importService;
     private final EvaluationMetadataService metadataService;
+    private final EcmwfImportService ecmwfImportService;
 
     public EvaluationAdminController(EvaluationService evaluationService, EvaluationImportService importService,
-                                     EvaluationMetadataService metadataService) {
+                                     EvaluationMetadataService metadataService,
+                                     EcmwfImportService ecmwfImportService) {
         this.evaluationService = evaluationService;
         this.importService = importService;
         this.metadataService = metadataService;
+        this.ecmwfImportService = ecmwfImportService;
     }
 
     @GetMapping("/meta")
@@ -93,5 +98,10 @@ public class EvaluationAdminController {
     public AdminApiResponse<EvaluationBatchImportResult> batchImport(
             @RequestBody EvaluationBatchImportRequest request) {
         return AdminApiResponse.success(importService.importBatch(request));
+    }
+
+    @PostMapping("/ecmwf/preview")
+    public AdminApiResponse<Map<String, Object>> ecmwfPreview(@RequestBody EcmwfPreviewRequest request) {
+        return AdminApiResponse.success(ecmwfImportService.preview(request));
     }
 }

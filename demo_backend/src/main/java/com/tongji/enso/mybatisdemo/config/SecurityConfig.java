@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authenticationEntryPoint())
                 .accessDeniedHandler(accessDeniedHandler()).and()
             .authorizeRequests()
-                .antMatchers("/admin/auth/login", "/admin/login").permitAll()
+                .antMatchers("/admin/auth/login").permitAll()
                 .antMatchers("/admin-files/**").permitAll()
                 .antMatchers("/meteo/**", "/nao/**", "/enso/**", "/sic/**", "/sie/**", "/info/**", "/imgs/**").permitAll()
                 .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs/**", "/webjars/**").permitAll()

@@ -23,6 +23,14 @@ public class AdminTokenService {
         return token;
     }
 
+    public void issueTokenWithValue(String username, String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return;
+        }
+        cleanupExpiredTokens();
+        sessions.put(token, new AdminSession(username, Instant.now().plus(TOKEN_TTL)));
+    }
+
     public boolean isValid(String token) {
         if (token == null || token.trim().isEmpty()) {
             return false;
