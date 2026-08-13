@@ -85,10 +85,6 @@ pnpm dev
 ## 3. 后台管理员登录凭据与账号说明
 
 * **默认管理员账号**：`admin`
-* **默认管理员密码**：`12345678` *(安全规则要求密码长度必须 >= 8 位)*
-* **密码哈希存储**：首次启动后端服务时，系统会自动在数据库 `admin_user` 表中以 **PBKDF2 哈希加密** 格式安全保存管理员密码。
-* **自定义初始管理员**：若需在本地改用其他初始账号密码，可在 `.vscode/launch.json` 的 `env` 节点中添加环境变量：
-  ```json
-  "ADMIN_BOOTSTRAP_USERNAME": "自定义账号",
-  "ADMIN_BOOTSTRAP_PASSWORD": "自定义密码(>=8位)"
-  ```
+* **默认管理员密码**：`admin123`
+* **密码哈希存储**：管理员信息保存在数据库 `admin_users` 表中，密码使用 **BCrypt 哈希加密** 存储，会话基于无状态 HS512 JWT Token 认证。
+* **初始化 SQL 脚本**：可在 `demo_backend/src/main/resources/sql/admin_schema.sql` 或 `database/migrations/V001__create_admin_user.sql` 中查看与初始化管理员表结构。
