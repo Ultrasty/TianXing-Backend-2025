@@ -168,6 +168,10 @@ public class EnsoController {
         String result5 = ensoMapper.findEachPredictionsResultByMonthType(year, month, "nino34_mean");
         List<Object> list5 = gson.fromJson(result5, listType);
 
+        if (list1 == null) list1 = new ArrayList<>();
+        if (list2 == null) list2 = new ArrayList<>();
+        if (list4 == null) list4 = new ArrayList<>();
+
         if(list5 == null) {
             list5 = new ArrayList<>();
             int m = Math.min(list1.size() , Math.min(list2.size() , list4.size()));
@@ -940,10 +944,18 @@ public class EnsoController {
     {
         List<Tj_enso> ensoData = ensoMapper.findTj_ensoInfoByType("nino34_asc");
 
+        Map<String, Object> result = new HashMap<>();
+        if (ensoData == null || ensoData.isEmpty()) {
+            result.put("earliestDate", null);
+            result.put("latestDate", null);
+            return result;
+        }
+
         String earliestDate = null;
         String latestDate = null;
 
         for (Tj_enso enso : ensoData) {
+            if (enso == null || enso.getYear() == null || enso.getMonth() == null) continue;
             int year = Integer.parseInt(enso.getYear());
             int month = Integer.parseInt(enso.getMonth());
             if (earliestDate == null || year < Integer.parseInt(earliestDate.split("-")[0]) || (year == Integer.parseInt(earliestDate.split("-")[0]) && month < Integer.parseInt(earliestDate.split("-")[1]))) {
@@ -953,12 +965,17 @@ public class EnsoController {
                 latestDate = year + "-" + month;
             }
         }
+        if (earliestDate == null || latestDate == null) {
+            result.put("earliestDate", null);
+            result.put("latestDate", null);
+            return result;
+        }
+
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-M");  // YearMonth 无法直接解析形如 xxxx-x
 
         YearMonth latestYearMonth = YearMonth.parse(latestDate, dateFormatter);
         YearMonth earliestYearMonth = YearMonth.parse(earliestDate, dateFormatter);
 
-        Map<String, Object> result = new HashMap<>();
         result.put("earliestDate", earliestYearMonth);
         result.put("latestDate", latestYearMonth);
         return result;

@@ -87,6 +87,35 @@ def decode_grib(path: str) -> Dict[str, Any]:
     return {"data": data, "fieldMetadata": field_meta}
 
 
+def reduce_data(data: Any, reducer: str, max_points: int = 200) -> List[Any]:
+    arr = np.asarray(data, dtype=float)
+    if not np.any(np.isfinite(arr)):
+        return []
+
+    if reducer == "MEAN":
+        mean_val = float(np.nanmean(arr))
+        return [round(mean_val, 4)]
+    elif reducer == "ROW_MEAN":
+        if arr.ndim == 2:
+            row_means = np.nanmean(arr, axis=1)
+            return [round(float(v), 4) if np.isfinite(v) else None for v in row_means]
+        else:
+            mean_val = float(np.nanmean(arr))
+            return [round(mean_val, 4)]
+    elif reducer == "SAMPLE":
+        flat = arr.flatten()
+        flat_finite = flat[np.isfinite(flat)]
+        if len(flat_finite) == 0:
+            return []
+        if len(flat_finite) <= max_points:
+            return [round(float(x), 4) for x in flat_finite]
+        indices = np.linspace(0, len(flat_finite) - 1, max_points, dtype=int)
+        return [round(float(flat_finite[i]), 4) for i in indices]
+    else:
+        mean_val = float(np.nanmean(arr))
+        return [round(mean_val, 4)]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
@@ -100,6 +129,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--type", dest="forecast_type", default="fc")
     parser.add_argument("--source", default="ecmwf", choices=["ecmwf", "aws", "google", "azure"])
     parser.add_argument("--model", default="ifs", choices=["ifs", "aifs-single", "aifs-ens"])
+    parser.add_argument("--preview", action="store_true", help="Generate preview reduction for admin UI")
+    parser.add_argument("--reducer", default="MEAN", choices=["MEAN", "ROW_MEAN", "SAMPLE"])
+    parser.add_argument("--max-points", type=int, default=200)
     return parser.parse_args()
 
 
@@ -133,16 +165,31 @@ def main() -> None:
     try:
         result = client.retrieve(request=request, target=grib_path)
         decoded = decode_grib(grib_path)
+        raw_data = decoded["data"]
+        total_grid_points = int(np.asarray(raw_data).size) if raw_data is not None else 0
         metadata = {
             "source": args.source,
             "model": args.model,
             "request": request,
+            "totalGridPoints": total_grid_points,
             "forecastDatetime": getattr(result, "datetime", None).isoformat()
             if getattr(result, "datetime", None) is not None
             else None,
             "fields": decoded["fieldMetadata"],
         }
-        payload = {"data": decoded["data"], "metadata": metadata}
+        if args.preview:
+            reduced_values = reduce_data(raw_data, args.reducer, args.max_points)
+            payload = {
+                "source": "ECMWF",
+                "dataKind": "RAW_FIELD_REDUCTION",
+                "publishable": False,
+                "values": reduced_values,
+                "metadata": metadata,
+                "notice": "展示的是 ECMWF 原始预报场的工程归约结果，未直接写入评估表。",
+            }
+        else:
+            payload = {"data": raw_data, "metadata": metadata}
+
         with open(args.output, "w", encoding="utf-8") as output:
             json.dump(payload, output, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     finally:
@@ -154,3 +201,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

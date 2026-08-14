@@ -1,5 +1,6 @@
 package com.tongji.enso.mybatisdemo.controller;
 
+import com.tongji.enso.mybatisdemo.config.JwtUtils;
 import com.tongji.enso.mybatisdemo.entity.admin.AdminUser;
 import com.tongji.enso.mybatisdemo.entity.admin.AdminApiResponse;
 import com.tongji.enso.mybatisdemo.mapper.admin.AdminUserMapper;
@@ -28,23 +29,33 @@ public class AdminAuthController {
     @Autowired
     private AdminTokenService adminTokenService;
 
+    @Autowired
+    private JwtUtils jwtUtils;
+
     @PostMapping("/login")
     public ResponseEntity<AdminApiResponse<Map<String, Object>>> login(@RequestBody LoginRequest request) {
-        if (request == null || isBlank(request.getUsername()) || isBlank(request.getPassword())) {
-            return new ResponseEntity<>(AdminApiResponse.<Map<String, Object>>fail("请输入用户名和密码"), HttpStatus.BAD_REQUEST);
-        }
+        try {
+            if (request == null || isBlank(request.getUsername()) || isBlank(request.getPassword())) {
+                return new ResponseEntity<>(AdminApiResponse.<Map<String, Object>>fail("请输入用户名和密码"), HttpStatus.BAD_REQUEST);
+            }
 
-        AdminUser adminUser = adminUserMapper.findByUsername(request.getUsername().trim());
-        if (adminUser == null || !adminUser.isEnabled() || !passwordEncoder.matches(request.getPassword(), adminUser.getPasswordHash())) {
-            return new ResponseEntity<>(AdminApiResponse.<Map<String, Object>>fail("用户名或密码错误"), HttpStatus.UNAUTHORIZED);
-        }
+            AdminUser adminUser = adminUserMapper.findByUsername(request.getUsername().trim());
+            if (adminUser == null || !adminUser.isEnabled() || !passwordEncoder.matches(request.getPassword(), adminUser.getPasswordHash())) {
+                return new ResponseEntity<>(AdminApiResponse.<Map<String, Object>>fail("用户名或密码错误"), HttpStatus.UNAUTHORIZED);
+            }
 
-        String token = adminTokenService.issueToken(adminUser.getUsername());
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
-        response.put("tokenType", "Bearer");
-        response.put("username", adminUser.getUsername());
-        return ResponseEntity.ok(AdminApiResponse.ok("登录成功", response));
+            String token = jwtUtils.createToken(adminUser.getUsername());
+            adminTokenService.issueTokenWithValue(adminUser.getUsername(), token);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            response.put("tokenType", "Bearer");
+            response.put("username", adminUser.getUsername());
+            return ResponseEntity.ok(AdminApiResponse.ok("登录成功", response));
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return new ResponseEntity<>(AdminApiResponse.<Map<String, Object>>fail("登录异常: " + t.getClass().getName() + ": " + t.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @PostMapping("/logout")

@@ -156,4 +156,4 @@ ADMIN_IMPORT_MAX_RECORDS=500
 ADMIN_IMPORT_MAX_FILE_SIZE=10MB
 ```
 
-先执行 `V001__create_admin_user.sql`，用 `scripts/generate-bcrypt-hash.ps1` 生成 BCrypt 哈希并创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。
+先执行 `V001__create_admin_user.sql`（创建 `admin_users` 表），用 `scripts/generate-bcrypt-hash.ps1` 生成 BCrypt 哈希并创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。

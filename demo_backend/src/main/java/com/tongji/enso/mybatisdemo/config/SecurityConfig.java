@@ -41,11 +41,12 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authenticationEntryPoint())
                 .accessDeniedHandler(accessDeniedHandler()).and()
             .authorizeRequests()
-                .antMatchers("/admin/login").permitAll()
-                .antMatchers("/meteo/**").permitAll()
-                .antMatchers("/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/webjars/**").permitAll()
-                .antMatchers("/imgs/**").permitAll()
-                .anyRequest().authenticated().and()
+                .antMatchers("/admin/auth/login").permitAll()
+                .antMatchers("/admin-files/**").permitAll()
+                .antMatchers("/meteo/**", "/nao/**", "/enso/**", "/sic/**", "/sie/**", "/info/**", "/imgs/**").permitAll()
+                .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs/**", "/webjars/**").permitAll()
+                .antMatchers("/admin/**").authenticated()
+                .anyRequest().permitAll().and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

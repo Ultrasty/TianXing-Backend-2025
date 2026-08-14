@@ -40,7 +40,7 @@ public class AppConfiguration {
             public void addInterceptors(InterceptorRegistry registry) {
                 registry.addInterceptor(adminAuthInterceptor)
                         .addPathPatterns("/admin/**")
-                        .excludePathPatterns("/admin/auth/login");
+                        .excludePathPatterns("/admin/auth/login", "/admin/auth/logout");
             }
 
             @Override

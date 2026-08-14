@@ -27,7 +27,7 @@ public interface ImgsMapper {
      * @return
      */
     @Select("SELECT * FROM imgs WHERE year = #{year} AND month = #{month} AND day = #{day} AND type = #{type}")
-    List<Imgs> findImgsInfoByDayType(@RequestParam("year") String year, @RequestParam("month") String month, @RequestParam("day") String day, @RequestParam("type") String type);
+    List<Imgs> findImgsInfoByDayType(@Param("year") String year, @Param("month") String month, @Param("day") String day, @Param("type") String type);
 
     /**
      * 从 imgs 中查询指定类型的数据
@@ -35,7 +35,7 @@ public interface ImgsMapper {
      * @return
      */
     @Select("SELECT * FROM imgs WHERE type = #{type}")
-    List<Imgs> findImgsInfoByType(@RequestParam("type") String type);
+    List<Imgs> findImgsInfoByType(@Param("type") String type);
 
     @Select("SELECT COUNT(*) FROM imgs WHERE year = #{year} AND month = #{month} AND day = #{day} AND type = #{type}")
     int countByYearMonthDayType(@Param("year") String year, @Param("month") String month, @Param("day") String day, @Param("type") String type);

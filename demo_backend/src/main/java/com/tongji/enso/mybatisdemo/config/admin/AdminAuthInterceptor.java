@@ -1,6 +1,7 @@
 package com.tongji.enso.mybatisdemo.config.admin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tongji.enso.mybatisdemo.config.JwtUtils;
 import com.tongji.enso.mybatisdemo.entity.admin.AdminApiResponse;
 import com.tongji.enso.mybatisdemo.service.admin.AdminTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,11 +16,13 @@ import java.io.IOException;
 public class AdminAuthInterceptor implements HandlerInterceptor {
     private final AdminTokenService adminTokenService;
     private final ObjectMapper objectMapper;
+    private final JwtUtils jwtUtils;
 
     @Autowired
-    public AdminAuthInterceptor(AdminTokenService adminTokenService, ObjectMapper objectMapper) {
+    public AdminAuthInterceptor(AdminTokenService adminTokenService, ObjectMapper objectMapper, JwtUtils jwtUtils) {
         this.adminTokenService = adminTokenService;
         this.objectMapper = objectMapper;
+        this.jwtUtils = jwtUtils;
     }
 
     @Override
@@ -29,7 +32,7 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         }
 
         String token = extractBearerToken(request.getHeader("Authorization"));
-        if (adminTokenService.isValid(token)) {
+        if ((token != null && jwtUtils.validateToken(token)) || adminTokenService.isValid(token)) {
             return true;
         }
 
