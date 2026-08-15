@@ -43,6 +43,9 @@ public class ForecastResultImagePublishService {
     @Autowired
     private ImgsMapper imgsMapper;
 
+    @Autowired
+    private EcmwfRawDataService ecmwfRawDataService;
+
     @Value("${admin.upload.root:uploads}")
     private String uploadRoot;
 
@@ -61,6 +64,45 @@ public class ForecastResultImagePublishService {
         ensureNewRecord(key);
         List<String> paths = downloadEcmwfImages(key, imageUrls);
         return persistRecord(key, paths);
+    }
+
+    public PublishedImage publishFromEcmwfRaw(String year, String month, String day, String type,
+                                              EcmwfRawDataService.GenerateRequest request) {
+        ImageKey key = normalizeKey(year, month, day, type);
+        ensureNewRecord(key);
+        request.type = key.type;
+        Path targetDirectory = targetDirectory(key);
+        createDirectory(targetDirectory);
+        Path rawDirectory = targetDirectory.resolve("_source").normalize();
+        assertInsideUploadRoot(rawDirectory);
+        EcmwfRawDataService.GeneratedForecast generated = ecmwfRawDataService.generate(request, rawDirectory);
+        List<String> paths = new ArrayList<>();
+        for (int i = 0; i < generated.getImages().size(); i++) {
+            Path image = generated.getImages().get(i);
+            String extension = extensionFromName(image.getFileName().toString());
+            String fileName = String.format(Locale.ENGLISH, "%02d.%s", i + 1,
+                    isBlank(extension) ? "png" : extension);
+            Path target = targetDirectory.resolve(fileName).normalize();
+            assertInsideUploadRoot(target);
+            try {
+                Files.copy(image, target, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException ex) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "保存 ECMWF 生成图片失败", ex);
+            }
+            paths.add(publicPath(key, fileName));
+        }
+        return persistRecord(key, paths);
+    }
+
+    public void deletePublishedImages(String year, String month, String day, String type) {
+        ImageKey key = normalizeKey(year, month, day, type);
+        int deleted = requiresDay(key.type)
+                ? imgsMapper.deleteByYearMonthDayType(key.year, key.month, key.day, key.type)
+                : imgsMapper.deleteByYearMonthType(key.year, key.month, key.type);
+        if (deleted <= 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到对应的预报结果图记录");
+        }
+        deleteStoredFiles(key);
     }
 
     public List<ImageTypeOption> listSupportedTypes() {
@@ -314,6 +356,32 @@ public class ForecastResultImagePublishService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "上传路径非法");
         }
         return normalized;
+    }
+
+    private void deleteStoredFiles(ImageKey key) {
+        Path directory = targetDirectory(key);
+        if (!Files.exists(directory)) {
+            return;
+        }
+        try {
+            Files.walk(directory)
+                    .sorted((left, right) -> right.compareTo(left))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    });
+        } catch (RuntimeException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof IOException) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "删除图片文件失败", cause);
+            }
+            throw ex;
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "删除图片文件失败", ex);
+        }
     }
 
     private String publicPath(ImageKey key, String fileName) {

@@ -2,14 +2,15 @@ package com.tongji.enso.mybatisdemo.mapper.online;
 
 import com.tongji.enso.mybatisdemo.entity.online.Imgs;
 
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
-import org.apache.ibatis.annotations.Select;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Repository
 public interface ImgsMapper {
@@ -46,6 +47,12 @@ public interface ImgsMapper {
     @Insert("INSERT INTO imgs (year, month, day, type, data) VALUES (#{year}, #{month}, #{day}, #{type}, #{data})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertImgs(Imgs imgs);
+
+    @Delete("DELETE FROM imgs WHERE year = #{year} AND month = #{month} AND day = #{day} AND type = #{type}")
+    int deleteByYearMonthDayType(@Param("year") String year, @Param("month") String month, @Param("day") String day, @Param("type") String type);
+
+    @Delete("DELETE FROM imgs WHERE year = #{year} AND month = #{month} AND type = #{type}")
+    int deleteByYearMonthType(@Param("year") String year, @Param("month") String month, @Param("type") String type);
 
 
 }
