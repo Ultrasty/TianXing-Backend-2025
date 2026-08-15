@@ -1,16 +1,16 @@
 # 评估数据管理联调测试报告
 
-验证日期：2026-08-05。
+验证日期：2026-08-15。
 
 复现命令、逐项验收步骤和预期结果见 `docs/evaluation-testing-guide.md`。本报告记录已经完成的验证结果，不代替交付机器上的本地 MySQL 验收。
 
 ## 自动化结果
 
-- 后端 `mvnw.cmd test`：18 个测试全部通过。
+- 后端 `mvnw.cmd test`：14 个测试全部通过。
 - Python `py -3.12 scripts/test_nsidc_evaluation.py`：4 个指标/匹配测试全部通过。
 - 前端 `pnpm install --frozen-lockfile`：通过。
 - 前端 `pnpm build`：通过；仅有现有 Sass legacy API 和大 chunk 警告。
-- 后端测试覆盖管理员登录/JWT、四类数据 CRUD、手动导入、NSIDC 评估发布与来源留痕、上游指标 UPSERT、ECMWF 原始场拒绝入库、重复拒绝、批次回滚、字段白名单，以及外部脚本请求参数安全校验。
+- 后端测试覆盖管理员登录/JWT、四类数据 CRUD、手动导入、NSIDC 评估发布与来源留痕、上游指标 UPSERT、非指标批次拒绝、重复拒绝、批次回滚、字段白名单，以及外部脚本请求参数安全校验。
 - 测试日志中的一次 H2 约束异常是用于验证整批回滚的预期场景，最终结果仍为成功。
 
 ## 真实 MySQL 8 验证
@@ -50,25 +50,11 @@
 - Pearson 相关系数约 `0.996995–0.999142`。
 - 同时生成并可发布 BAIS、VAR、OBS_STD 和 PRE_STD，来源文件逐一记录 SHA-256。
 
-## 真实 ECMWF Open Data 验证
-
-使用 ECMWF Open Data Client 下载最新 IFS `2t`、step 0 的 GRIB2 数据并通过 ecCodes 解码：
-
-- 起报时间：2026-07-31 00 UTC。
-- 网格：1440 × 721，共 1,038,240 点。
-- 字段单位：K。
-- `MEAN` 归约结果：281.1339938590111。
-- 经 `POST /admin/evaluations/ecmwf/preview` 返回 `RAW_FIELD_REDUCTION`、`publishable=false` 和归约值；不会生成可直接入评估表的记录。
-- 主站发生瞬时 SSL 错误时，脚本会按顺序尝试 AWS、Google、Azure 镜像；本次最终实际 provider 为 `ecmwf`。
-
-该结果证明真实下载、GRIB2 解析、转换和安全预览链路可用。空间平均/逐行平均/抽样不是领域评估公式；提交 `RAW_FIELD_REDUCTION` 会返回 400 且零写入。真正的 SIC/SIE RMSD、BACC 和相关系数现在由上述 NSIDC 评估链路计算，ECMWF 继续保持独立。
-
 ## 前端浏览器联调
 
 - 未登录路由守卫和管理员登录成功。
 - 登录后可见 ENSO、NAO、SIC、SIE 四个页签和数据库真实数据。
 - 管理页可分别执行 NSIDC SIC/SIE 科学评估的预览和 UPSERT，并显示观测产品、版本、匹配方式和诊断值。
-- ECMWF 原始场入口仍独立显示，不能发布为海冰指标。
 - 通过页面实际新增并删除 ENSO 演示记录成功。
 - 修复了原全局 `.el-button` 样式导致所有普通按钮绝对定位、点击区域重叠的问题；箭头样式现只作用于图表左右切换按钮。
 

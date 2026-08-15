@@ -8,13 +8,11 @@
 | `prediction_IceTFT` | 12 个月 SIE 预测 | 本项目 `tj_sie` |
 | MASAM2 V2（G10005） | 每日 SIC 观测 | NSIDC，4 km，2012 至今，DOI `10.7265/bqd9-vm28` |
 | Sea Ice Index V4（G02135） | 月平均北半球 SIE 观测 | NSIDC，DOI `10.7265/N5K072F8` |
-| ECMWF Open Data | 独立真实气象预报场 | ECMWF；不参与本次海冰评分 |
 
 官方产品页：
 
 - MASAM2 V2：https://nsidc.org/data/g10005/versions/2
 - Sea Ice Index V4：https://nsidc.org/data/g02135/versions/4
-- ECMWF Open Data：https://www.ecmwf.int/en/forecasts/datasets/open-data
 - Ice-BCNet 论文：https://doi.org/10.1016/j.ocemod.2024.102326
 - 归一化 IIEE / binary accuracy 方法：https://doi.org/10.1038/s41467-021-25257-4
 

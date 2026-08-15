@@ -10,7 +10,7 @@
 | Python 指标测试 | 否 | 否 | SIC 单位/BACC 公式、SIE 时效匹配 |
 | 前端生产构建 | 否 | 否 | Vue/TypeScript/打包完整性 |
 | 本地联调 | 是 | 否 | 浏览器到 Spring Boot 再到 MySQL 的闭环 |
-| 真实数据测试 | 是 | 是 | NSIDC 下载与指标计算、ECMWF Open Data 获取 |
+| 真实数据测试 | 是 | 是 | NSIDC 下载与指标计算 |
 
 提交前至少完成前三项；演示和交付前完成后两项。
 
@@ -29,12 +29,12 @@ py -3.12 scripts\test_nsidc_evaluation.py
 通过标准：
 
 ```text
-Tests run: 18, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
 Ran 4 tests
 OK
 ```
 
-Maven 日志中出现一次 H2 `Check constraint violation` 堆栈是批量事务回滚用例故意制造的失败。只要最终是 `BUILD SUCCESS` 且 18 个测试零失败，就属于通过。
+Maven 日志中出现一次 H2 `Check constraint violation` 堆栈是批量事务回滚用例故意制造的失败。只要最终是 `BUILD SUCCESS` 且 14 个测试零失败，就属于通过。
 
 ### 前端构建
 
@@ -107,7 +107,6 @@ SHOW TABLES LIKE 'evaluation_metric_provenance';
 
 ```powershell
 cd C:\VScodework\TianXingProject\TianXing-Backend-2026\demo_backend
-.\.venv\Scripts\python.exe -m pip install -r scripts\requirements-ecmwf.txt
 .\.venv\Scripts\python.exe -m pip install -r scripts\requirements-nsidc.txt
 
 $env:DB_URL='jdbc:mysql://127.0.0.1:3306/web?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC'
@@ -115,7 +114,6 @@ $env:DB_USERNAME='root'
 $mysqlPassword = Read-Host '输入本机 MySQL root 密码' -AsSecureString
 $env:DB_PASSWORD=[System.Net.NetworkCredential]::new('', $mysqlPassword).Password
 $env:ADMIN_JWT_SECRET=[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-$env:ECMWF_PYTHON=(Resolve-Path .\.venv\Scripts\python.exe).Path
 $env:NSIDC_PYTHON=(Resolve-Path .\.venv\Scripts\python.exe).Path
 $env:NSIDC_CACHE_DIR=(Join-Path $env:LOCALAPPDATA 'TianXing\nsidc-cache')
 .\mvnw.cmd spring-boot:run
@@ -197,19 +195,7 @@ LIMIT 10;
 
 通过标准：SIC 显示 `SIC_Ice-BCNet / G10005 / 2`，SIE 显示 `prediction_IceTFT / G02135 / 4`，来源均为 `NSIDC`。
 
-## 8. ECMWF 独立功能测试
-
-打开“ECMWF 原始场”，使用 `2t / IFS / ECMWF / MEAN`，起报日期留空，点击获取预览。
-
-通过标准：
-
-- 返回 `source=ECMWF`、`dataKind=RAW_FIELD_REDUCTION`、`publishable=false`。
-- metadata 包含起报时间、字段单位和网格点数。
-- 页面没有把 MEAN 数组写成 SIC/SIE 的 RMSD、BACC 或相关系数。
-
-ECMWF Open Data 是滚动数据，数值和起报时间不要求与历史测试报告完全相同。
-
-## 9. 常见失败判断
+## 8. 常见失败判断
 
 | 现象 | 原因与处理 |
 | --- | --- |
@@ -219,9 +205,8 @@ ECMWF Open Data 是滚动数据，数值和起报时间不要求与历史测试�
 | 首次 SIC 请求超时 | 检查外网，将 `NSIDC_TIMEOUT_SECONDS` 提高到 1200，并保留缓存目录后重试 |
 | 后续 SIC 仍每次下载 | 检查 `NSIDC_CACHE_DIR` 是否固定且可写 |
 | 页面 BACC 显示约 0.98% | 前端版本过旧；当前版本会把库内 0–1 分数乘 100 显示 |
-| ECMWF 指定旧日期无数据 | 起报日期留空，使用最新 Open Data |
 | Maven 日志有 H2 约束堆栈 | 查看最终是否 `BUILD SUCCESS`；这是回滚测试的预期日志 |
 
-## 10. 交付证据截图
+## 9. 交付证据截图
 
-建议保留以下 6 张截图：登录成功、SIE NSIDC 结果、SIC NSIDC 结果及来源详情、2.7 更新前后、2.8 删除后、ECMWF `publishable=false` 预览。另保存三段命令末尾：Maven 18/0/0、Python 4 tests OK、Vite build success。
+建议保留以下 5 张截图：登录成功、SIE NSIDC 结果、SIC NSIDC 结果及来源详情、2.7 更新前后、2.8 删除后。另保存三段命令末尾：Maven 14/0/0、Python 4 tests OK、Vite build success。

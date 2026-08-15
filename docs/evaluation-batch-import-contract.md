@@ -23,7 +23,7 @@ Content-Type: application/json
 规则：
 
 - `source` 固定为 `ECMWF`。
-- `dataKind` 固定为 `EVALUATION_METRIC`。`RAW_FIELD_REDUCTION` 或缺失值会被拒绝，防止把 ECMWF 原始场归约值冒充评估指标。
+- `dataKind` 固定为 `EVALUATION_METRIC`。缺失或其它值会被拒绝，防止未完成的中间数据冒充评估指标。
 - `mode` 为 `REJECT` 或 `UPSERT`。
 - `REJECT` 遇到非法或重复数据时整批零写入。
 - `UPSERT` 存在则更新，不存在则新增；任何失败都会整批回滚。

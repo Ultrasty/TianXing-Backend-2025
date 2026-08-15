@@ -108,23 +108,6 @@ Content-Type: application/json
 < ../../examples/manual-evaluation-import.json
 --EvaluationBoundary--
 
-### ECMWF Open Data 真实下载、GRIB 解析和原始场预览（不可直接入评估表）
-POST {{baseUrl}}/admin/evaluations/ecmwf/preview
-Authorization: Bearer {{adminToken}}
-Content-Type: application/json
-
-{
-  "time": 0,
-  "step": 24,
-  "param": "2t",
-  "levtype": "sfc",
-  "provider": "ecmwf",
-  "model": "ifs",
-  "forecastType": "fc",
-  "reducer": "MEAN",
-  "maxPoints": 200
-}
-
 ### 上游完成观测匹配和指标计算后的 ECMWF 评估结果入库
 POST {{baseUrl}}/admin/evaluations/import/batch
 Authorization: Bearer {{adminToken}}

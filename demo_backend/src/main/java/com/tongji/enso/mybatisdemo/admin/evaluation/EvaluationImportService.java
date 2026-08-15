@@ -81,7 +81,7 @@ public class EvaluationImportService {
         }
         if (request.getDataKind() == null ||
                 !"EVALUATION_METRIC".equals(request.getDataKind().trim().toUpperCase(Locale.ROOT))) {
-            invalidFile("规范化批量接口的dataKind必须是 EVALUATION_METRIC；ECMWF原始场归约结果不能直接入评估表");
+            invalidFile("规范化批量接口的dataKind必须是 EVALUATION_METRIC");
         }
         return doImport(request);
     }

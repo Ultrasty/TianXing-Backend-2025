@@ -5,8 +5,7 @@ SIC uses NSIDC G10005 (MASAM2 V2) and reprojects the observation field to the
 existing Ice-BCNet/MITgcm grid before computing metrics. SIE uses the monthly
 Northern Hemisphere extent series from NSIDC G02135 V4.
 
-The program deliberately emits only evaluation metrics and provenance. ECMWF
-Open Data is handled by the separate raw-field preview pipeline.
+The program deliberately emits only evaluation metrics and provenance.
 """
 
 from __future__ import annotations

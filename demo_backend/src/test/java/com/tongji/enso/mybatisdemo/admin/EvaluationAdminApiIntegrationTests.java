@@ -194,15 +194,15 @@ class EvaluationAdminApiIntegrationTests {
     }
 
     @Test
-    void rejectsRawEcmwfFieldReductionAsEvaluationMetric() throws Exception {
-        String rawField = "{\"source\":\"ECMWF\",\"dataKind\":\"RAW_FIELD_REDUCTION\"," +
+    void rejectsNonMetricBatchPayload() throws Exception {
+        String nonMetric = "{\"source\":\"ECMWF\",\"dataKind\":\"UNVERIFIED\"," +
                 "\"mode\":\"UPSERT\",\"category\":\"SIE\",\"records\":[" +
                 "{\"year\":\"2026\",\"month\":\"8\",\"varModel\":\"RMSD\",\"data\":[273.15]}]}";
 
         mockMvc.perform(post("/admin/evaluations/import/batch")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(rawField))
+                        .content(nonMetric))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("IMPORT_FILE_INVALID"));
 

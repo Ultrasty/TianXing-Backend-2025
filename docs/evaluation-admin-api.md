@@ -19,7 +19,6 @@ Authorization: Bearer <JWT>
 | DELETE | `/admin/evaluations/{category}/{id}` | 删除记录 | 200 |
 | POST | `/admin/evaluations/import/manual` | 手动 JSON 文件导入 | 200 |
 | POST | `/admin/evaluations/nsidc/evaluate` | 用现有 Ice-BCNet/IceTFT 预测和 NSIDC 观测计算 SIC/SIE 指标，可预览或发布 | 200 |
-| POST | `/admin/evaluations/ecmwf/preview` | 下载并解析 ECMWF Open Data，生成不可直接发布的原始场预览 | 200 |
 | POST | `/admin/evaluations/import/batch` | 受信上游已计算指标批量入库 | 200 |
 
 ## 登录
@@ -136,45 +135,9 @@ Content-Type: application/json
 
 响应固定包含 `source=NSIDC`、`dataKind=EVALUATION_METRIC`、预测模型、观测数据集/版本/DOI、访问时间、源 URL、SHA-256、匹配规则、公式说明和发布结果。完整方法见 `docs/nsidc-scientific-evaluation.md`。
 
-## ECMWF 原始场预览与上游指标入库
+## 上游已计算指标批量入库
 
-第一步从 Open Data 下载 GRIB2，解析字段并生成原始场归约预览：
-
-```http
-POST /admin/evaluations/ecmwf/preview
-Content-Type: application/json
-```
-
-```json
-{
-  "time": 0,
-  "step": 24,
-  "param": "2t",
-  "levtype": "sfc",
-  "model": "ifs",
-  "provider": "ecmwf",
-  "forecastType": "fc",
-  "reducer": "MEAN",
-  "maxPoints": 200
-}
-```
-
-`date` 可留空以获取最新起报；`reducer` 支持 `MEAN`、`ROW_MEAN` 和 `SAMPLE`。服务会优先使用指定源，ECMWF 主站发生瞬时网络错误时依次尝试 AWS、Google 和 Azure 镜像。响应中的 `data.values` 是工程归约值，`data.metadata` 会记录实际数据源、模型、起报时间、网格数和字段单位。
-
-预览响应固定包含以下安全标识，不能直接转为评估记录：
-
-```json
-{
-  "source": "ECMWF",
-  "dataKind": "RAW_FIELD_REDUCTION",
-  "publishable": false,
-  "values": [281.13],
-  "metadata": {},
-  "notice": "这是 ECMWF 原始预报场的工程归约结果，不是评估指标，不能直接写入评估表"
-}
-```
-
-若将来有其它受信上游程序引入观测数据并完成变量、有效时间、网格、单位和掩膜匹配，计算完成的指标仍可调用批量接口：
+受信上游程序完成观测匹配和指标计算后，可通过批量接口发布结果：
 
 ```http
 POST /admin/evaluations/import/batch
@@ -196,9 +159,9 @@ Content-Type: application/json
 - `REJECT`：任何非法或重复记录都会使整批零写入。
 - `UPSERT`：存在则更新，不存在则新增；任一写入失败时整批回滚。
 - 单批默认最多 500 条；这个兼容入口当前要求 `source=ECMWF`。
-- `dataKind` 必须为 `EVALUATION_METRIC`；缺失该字段或提交 `RAW_FIELD_REDUCTION` 均返回 `400 IMPORT_FILE_INVALID`，不会写库。
+- `dataKind` 必须为 `EVALUATION_METRIC`；缺失该字段或提交其它类型均返回 `400 IMPORT_FILE_INVALID`，不会写库。
 
-注意：ECMWF Open Data 原始场获取与 NSIDC 海冰评估是两条隔离的链路。空间平均或抽样值不等于 RMSD、BACC 或相关系数，也不能提交给 NSIDC 评估入口。
+批量接口只接收完成领域计算的评估指标，不能提交未完成的中间数据。
 
 成功结果：
 
@@ -245,10 +208,6 @@ ADMIN_JWT_SECRET
 ADMIN_JWT_EXPIRE_SECONDS=7200
 ADMIN_IMPORT_MAX_RECORDS=500
 ADMIN_IMPORT_MAX_FILE_SIZE=10MB
-ECMWF_PYTHON=python
-ECMWF_SCRIPT_PATH=scripts/ecmwf_evaluation_fetch.py
-ECMWF_TIMEOUT_SECONDS=240
-ECMWF_MAX_OUTPUT_BYTES=5242880
 NSIDC_PYTHON=python
 NSIDC_SCRIPT_PATH=scripts/nsidc_evaluation.py
 NSIDC_CACHE_DIR=<可写的持久缓存目录>
@@ -261,7 +220,6 @@ Python 依赖安装：
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r scripts\requirements-ecmwf.txt
 .\.venv\Scripts\python.exe -m pip install -r scripts\requirements-nsidc.txt
 ```
 

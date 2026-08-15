@@ -115,21 +115,15 @@ EXIT;
 
 能看到 `admin` 且 `enabled=1`，数据库准备即完成。明文密码和真实哈希都不要提交到 Git；本地演示密码不要用于云端。
 
-### NSIDC 与 ECMWF Python 环境
+### NSIDC Python 环境
 
 ```powershell
 cd C:\VScodework\TianXingProject\TianXing-Backend-2026\demo_backend
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r scripts\requirements-ecmwf.txt
 .\.venv\Scripts\python.exe -m pip install -r scripts\requirements-nsidc.txt
 ```
 
-两条功能共用这个虚拟环境，但数据含义不同：
-
-- NSIDC：为现有 `SIC_Ice-BCNet`、`prediction_IceTFT` 提供真实观测，计算并发布科学评估指标。
-- ECMWF Open Data：获取真实气象预报场并预览，不冒充 SIC/SIE 评估指标。
-
-ECMWF Open Data 是滚动实时数据。演示时将“起报日期”留空，系统会请求最新可用数据。
+NSIDC 为现有 `SIC_Ice-BCNet`、`prediction_IceTFT` 提供真实观测，计算并发布科学评估指标。
 
 ## 2. 启动联调环境
 
@@ -142,7 +136,6 @@ $env:DB_USERNAME='root'
 $mysqlPassword = Read-Host '输入本机 MySQL root 密码' -AsSecureString
 $env:DB_PASSWORD=[System.Net.NetworkCredential]::new('', $mysqlPassword).Password
 $env:ADMIN_JWT_SECRET=[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-$env:ECMWF_PYTHON=(Resolve-Path .\.venv\Scripts\python.exe).Path
 $env:NSIDC_PYTHON=(Resolve-Path .\.venv\Scripts\python.exe).Path
 $env:NSIDC_CACHE_DIR=(Join-Path $env:LOCALAPPDATA 'TianXing\nsidc-cache')
 .\mvnw.cmd spring-boot:run
@@ -173,18 +166,17 @@ pnpm dev
 
 文件会保存在 `NSIDC_CACHE_DIR`。后续同月评估会校验文件大小和 SHA-256 后复用缓存。缓存是可重新下载的本地文件，不属于 MySQL，也不要提交到 Git。
 
-## 4. 推荐的 8 分钟演示
+## 4. 推荐的 6 分钟演示
 
 1. **鉴权闭环（约 30 秒）**：直接访问管理地址，展示未登录跳到登录页；登录后进入四类页签。
 2. **真实 SIE 科学评估与 2.9 发布（约 90 秒）**：点击“NSIDC 科学评估”，选择 `SIE / 2022 / 仅计算预览`。说明系统读取 2022 年现有 `prediction_IceTFT` 月起报，匹配 NSIDC Sea Ice Index V4；展示 12 个时效的 RMSD、BAIS、VAR、相关系数、观测标准差和预测标准差。再切换 `UPSERT` 发布，展示来源与写库条数。
 3. **真实 SIC 科学评估（约 90 秒）**：选择 `SIC / 2023-04-22 / 当天 / 仅计算预览`。展示 Ice-BCNet 7 天预测、MASAM2 V2 观测、384×420 与 2550×2100 网格匹配，以及 RMSE、BACC、有效格点和有效面积。缓存已预热时无需重新下载。
 4. **2.7 更新（约 45 秒）**：进入 SIE，手工发布一条临时记录 `year=2099, month=12, varModel=RMSD, data=[0.12,0.18,0.21]`；点击“更新”改为 `[0.20,0.25,0.30]`，展示列表刷新。不要手工改真实 NSIDC 指标。
-5. **真实 ECMWF 独立功能（约 90 秒）**：点击“ECMWF 原始场”，保留 `2t / IFS / ECMWF / MEAN`，起报日期留空。展示实际来源、单位、网格点数量、归约数组和 `RAW_FIELD_REDUCTION / publishable=false`。明确它是气象场获取，不是 SIC/SIE 指标。
-6. **2.8 删除和清理（约 45 秒）**：删除第 4 步的 2099 临时记录，确认列表消失；退出登录并说明无 Token 返回 401。
+5. **2.8 删除和清理（约 45 秒）**：删除第 4 步的 2099 临时记录，确认列表消失；退出登录并说明无 Token 返回 401。
 
 演示时可以使用这句总结：
 
-> Ice-BCNet 和 IceTFT 是预测值，NSIDC 是观测值；平台完成时空匹配、领域指标计算、来源留痕和发布。ECMWF Open Data 是另一条真实气象场获取链路，不参与这次 SIC/SIE 评分。
+> Ice-BCNet 和 IceTFT 是预测值，NSIDC 是观测值；平台完成时空匹配、领域指标计算、来源留痕和发布。
 
 已验证的真实样例：
 
@@ -199,9 +191,9 @@ pnpm dev
 | --- | --- | --- | --- |
 | 2.7 更新评估数据 | 列表“更新”弹窗 | `PUT /admin/evaluations/{category}/{id}`，完整校验并按 ID 更新 | 更新后列表与 MySQL 值一致 |
 | 2.8 删除评估数据 | 二次确认后删除 | `DELETE /admin/evaluations/{category}/{id}`，不存在返回 404 | 删除后查询不到记录 |
-| 2.9 发布评估数据 | 单条发布、JSON 导入、NSIDC 科学评估发布 | `POST /admin/evaluations`、`/import/manual`、`/nsidc/evaluate` | NSIDC 指标可 UPSERT 并保存来源；原始 ECMWF 场不可发布 |
+| 2.9 发布评估数据 | 单条发布、JSON 导入、NSIDC 科学评估发布 | `POST /admin/evaluations`、`/import/manual`、`/nsidc/evaluate` | NSIDC 指标可 UPSERT 并保存来源 |
 
-`POST /admin/evaluations/nsidc/evaluate` 是 SIC/SIE 科学评估闭环；`POST /admin/evaluations/ecmwf/preview` 是独立的 ECMWF 原始场获取能力。
+`POST /admin/evaluations/nsidc/evaluate` 是 SIC/SIE 科学评估闭环。
 
 四类数据 ENSO、NAO、SIC、SIE 的字段和指标白名单由 `/admin/evaluations/meta` 返回，前端不再使用 mock 数据，也不再把 SIC/SIE 合成 SeaIce。
 
@@ -228,8 +220,8 @@ pnpm build
 
 PR 应包含：
 
-- 后端分支 `feat/evaluation-admin-backend`：鉴权、CRUD/导入、NSIDC 科学评估、ECMWF 获取、V001–V003、测试、API 和本演示文档。
-- 前端分支 `XuYichen-2.7-2.9`：登录、Token/401、真实 API、四类动态表单、CRUD/导入、NSIDC/ECMWF UI、路由守卫和环境变量示例。
-- 测试证据：后端测试、Python 指标测试、前端生产构建、真实 NSIDC SIC/SIE 结果、一次 ECMWF metadata 截图或 JSON 摘要。
+- 后端分支 `feat/evaluation-admin-backend`：鉴权、CRUD/导入、NSIDC 科学评估、V001–V003、测试、API 和本演示文档。
+- 前端分支 `XuYichen-2.7-2.9`：登录、Token/401、真实 API、四类动态表单、CRUD/导入、NSIDC UI、路由守卫和环境变量示例。
+- 测试证据：后端测试、Python 指标测试、前端生产构建和真实 NSIDC SIC/SIE 结果。
 
 不要提交 `.env.local`、数据库密码、JWT 密钥、管理员明文密码、`.venv`、NSIDC 缓存、MySQL 数据目录或运行日志。建议前后端各建一个 PR，评审通过后再合入主分支。
