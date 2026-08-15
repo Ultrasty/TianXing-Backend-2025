@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Fetch NOAA CPC official NAO and ENSO monthly index data."""
+"""Fetch NOAA CPC official NAO and ENSO monthly index observations.
+
+数据均为 NOAA CPC 官方观测序列：
+- ENSO: ERSSTv6 逐月 Nino3.4 距平（ONI 的月输入，detrend.nino34.ascii.txt）
+- NAO : CPC 官方逐月 NAO 指数（norm.nao.monthly.b5001.current.ascii）
+
+语义：从目标年月起连续取文件里真实存在的观测值，最多 lead_months 个；
+目标月无数据 / 中途断档 / 网络失败一律报错退出（exit 1），绝不编造、外推或兜底。
+"""
 
 from __future__ import annotations
 
@@ -9,74 +17,94 @@ import sys
 import urllib.request
 from typing import Any, Dict, List, Tuple
 
-
-def fetch_noaa_nao_index(target_year: str, target_month: str) -> Tuple[List[float], str]:
-    url = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            lines = resp.read().decode("utf-8").splitlines()
-        
-        # Format: YEAR MONTH VALUE
-        val_map: Dict[str, float] = {}
-        for line in lines:
-            parts = line.strip().split()
-            if len(parts) >= 3:
-                y, m, v = parts[0], parts[1].lstrip('0'), parts[2]
-                try:
-                    val_map[f"{y}-{m}"] = float(v)
-                except ValueError:
-                    pass
-        
-        t_key = f"{target_year}-{target_month.lstrip('0')}"
-        if t_key in val_map:
-            base_val = val_map[t_key]
-            # 组装 1D 序列（以基准值衍生平滑序列）
-            return [round(base_val + (i * 0.05 - 0.1), 4) for i in range(6)], "fetch"
-        
-        # 若未查到该特定年月，从所有已知历史点中取最接近的记录
-        if val_map:
-            latest_val = list(val_map.values())[-1]
-            return [round(latest_val + (i * 0.03), 4) for i in range(6)], "calculation"
-    except Exception as e:
-        print(f"Warning: NOAA fetch failed ({e}), using fallback index sequence", file=sys.stderr)
-    
-    # 兜底默认序列
-    return [0.42, 0.38, 0.51, 0.29, 0.15, -0.05], "calculation"
+ENSO_URL = "https://www.cpc.ncep.noaa.gov/data/indices/detrend.nino34.ascii.txt"
+NAO_URL = "https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii"
 
 
-def fetch_noaa_enso_index(target_year: str, target_month: str) -> Tuple[List[float], str]:
-    url = "https://www.cpc.ncep.noaa.gov/data/indices/ersst5.nino.mth.81-10.ascii"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            lines = resp.read().decode("utf-8").splitlines()
-        
-        # Lines header: YR MON NINO1+2 ANOM NINO3 ANOM NINO4 ANOM NINO3.4 ANOM
-        val_map: Dict[str, float] = {}
-        for line in lines[1:]:
-            parts = line.strip().split()
-            if len(parts) >= 9:
-                y, m, v = parts[0], parts[1].lstrip('0'), parts[8]
-                try:
-                    val_map[f"{y}-{m}"] = float(v)
-                except ValueError:
-                    pass
-        
-        t_key = f"{target_year}-{target_month.lstrip('0')}"
-        if t_key in val_map:
-            base_val = val_map[t_key]
-            return [round(base_val + (i * 0.02 - 0.05), 4) for i in range(6)], "fetch"
-        
-        if val_map:
-            latest_val = list(val_map.values())[-1]
-            return [round(latest_val + (i * 0.02), 4) for i in range(6)], "calculation"
-    except Exception as e:
-        print(f"Warning: NOAA ENSO fetch failed ({e}), using fallback sequence", file=sys.stderr)
-    
-    return [0.65, 0.58, 0.45, 0.32, 0.20, 0.08], "calculation"
+class FetchError(Exception):
+    pass
+
+
+def http_get_text(url: str, retries: int = 1) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except Exception as e:
+            last_err = e
+    raise FetchError("无法访问 NOAA 数据源 {}: {}".format(url, last_err))
+
+
+def parse_index_file(text: str, value_col: int, min_cols: int, name: str) -> Dict[Tuple[int, int], float]:
+    """解析 NOAA 指数文本文件，返回 {(year, month): value}。"""
+    values: Dict[Tuple[int, int], float] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) < min_cols:
+            continue
+        try:
+            y = int(parts[0])
+            m = int(parts[1])
+            v = float(parts[value_col])
+        except ValueError:
+            continue
+        if 1 <= m <= 12:
+            values[(y, m)] = v
+    if not values:
+        raise FetchError("NOAA {} 数据解析为空，数据源结构可能已变更".format(name))
+    return values
+
+
+def consecutive_observations(values: Dict[Tuple[int, int], float],
+                             target_year: int, target_month: int,
+                             max_months: int) -> List[float]:
+    """从目标年月起连续取真实观测值（跨年进位），最多 max_months 个。"""
+    if (target_year, target_month) not in values:
+        latest = sorted(values)[-1]
+        raise FetchError(
+            "目标年月 {}-{:02d} 尚无 NOAA 观测数据（数据源最新仅到 {}-{:02d}）".format(
+                target_year, target_month, latest[0], latest[1]
+            )
+        )
+    series: List[float] = []
+    y, m = target_year, target_month
+    while len(series) < max_months:
+        key = (y, m)
+        if key not in values:
+            break
+        series.append(values[key])
+        m += 1
+        if m > 12:
+            y += 1
+            m = 1
+    return series
+
+
+def fetch_enso_series(target_year: int, target_month: int, max_months: int) -> Tuple[List[float], Dict[str, Any]]:
+    text = http_get_text(ENSO_URL)
+    values = parse_index_file(text, value_col=4, min_cols=5, name="ERSSTv6 Nino3.4")
+    series = consecutive_observations(values, target_year, target_month, max_months)
+    meta = {
+        "source": "NOAA CPC ERSSTv6 Nino3.4 (monthly anomaly)",
+        "source_type": "fetch",
+    }
+    return series, meta
+
+
+def fetch_nao_series(target_year: int, target_month: int, max_months: int) -> Tuple[List[float], Dict[str, Any]]:
+    text = http_get_text(NAO_URL)
+    values = parse_index_file(text, value_col=2, min_cols=3, name="NAO")
+    series = consecutive_observations(values, target_year, target_month, max_months)
+    meta = {
+        "source": "NOAA CPC NAO Monthly Index",
+        "source_type": "fetch",
+    }
+    return series, meta
 
 
 def apply_smoothing(data: List[float], smoothing: str) -> List[float]:
@@ -95,7 +123,7 @@ def apply_smoothing(data: List[float], smoothing: str) -> List[float]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fetch NOAA CPC Index")
+    parser = argparse.ArgumentParser(description="Fetch NOAA CPC NAO / ENSO monthly index observations")
     parser.add_argument("--dataset", required=True, choices=["NAO", "ENSO", "SIE"])
     parser.add_argument("--year", required=True)
     parser.add_argument("--month", required=True)
@@ -105,26 +133,25 @@ def main() -> None:
     parser.add_argument("--smoothing", default="raw")
     args = parser.parse_args()
 
+    try:
+        y = int(args.year)
+        m = int(args.month)
+        if not (1 <= m <= 12):
+            raise ValueError("month 必须在 1-12")
+    except ValueError as e:
+        print("参数错误: {}".format(e), file=sys.stderr)
+        sys.exit(2)
+
     lead_n = max(1, min(args.lead_months, 12))
 
-    if args.dataset == "ENSO":
-        raw_data, source_type = fetch_noaa_enso_index(args.year, args.month)
-        if source_type == "fetch":
-            source_name = "NOAA ERSSTv5 (Nino3.4 Index)"
+    try:
+        if args.dataset == "ENSO":
+            raw_data, source_meta = fetch_enso_series(y, m, lead_n)
         else:
-            source_name = "Local Extrapolation (NOAA Fallback)"
-    else:
-        raw_data, source_type = fetch_noaa_nao_index(args.year, args.month)
-        if source_type == "fetch":
-            source_name = "NOAA CPC (Official ASCII)"
-        else:
-            source_name = "Local Extrapolation (NOAA Fallback)"
-
-    if len(raw_data) < lead_n:
-        last = raw_data[-1] if raw_data else 0.0
-        raw_data.extend([round(last + i * 0.02, 4) for i in range(lead_n - len(raw_data))])
-    else:
-        raw_data = raw_data[:lead_n]
+            raw_data, source_meta = fetch_nao_series(y, m, lead_n)
+    except FetchError as e:
+        print("NOAA 数据获取失败: {}".format(e), file=sys.stderr)
+        sys.exit(1)
 
     final_data = apply_smoothing(raw_data, args.smoothing)
 
@@ -135,9 +162,10 @@ def main() -> None:
             "year": args.year,
             "month": args.month,
             "var_model": args.var_model,
-            "source": source_name,
-            "source_type": source_type,
+            "source": source_meta["source"],
+            "source_type": source_meta["source_type"],
             "lead_months": lead_n,
+            "available_months": len(raw_data),
             "smoothing": args.smoothing,
         },
         "data": final_data,
