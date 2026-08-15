@@ -43,6 +43,9 @@ public class ForecastResultImagePublishService {
     @Autowired
     private ImgsMapper imgsMapper;
 
+    @Autowired
+    private EcmwfRawDataService ecmwfRawDataService;
+
     @Value("${admin.upload.root:uploads}")
     private String uploadRoot;
 
@@ -60,6 +63,34 @@ public class ForecastResultImagePublishService {
         ImageKey key = normalizeKey(year, month, day, type);
         ensureNewRecord(key);
         List<String> paths = downloadEcmwfImages(key, imageUrls);
+        return persistRecord(key, paths);
+    }
+
+    public PublishedImage publishFromEcmwfRaw(String year, String month, String day, String type,
+                                              EcmwfRawDataService.GenerateRequest request) {
+        ImageKey key = normalizeKey(year, month, day, type);
+        ensureNewRecord(key);
+        request.type = key.type;
+        Path targetDirectory = targetDirectory(key);
+        createDirectory(targetDirectory);
+        Path rawDirectory = targetDirectory.resolve("_source").normalize();
+        assertInsideUploadRoot(rawDirectory);
+        EcmwfRawDataService.GeneratedForecast generated = ecmwfRawDataService.generate(request, rawDirectory);
+        List<String> paths = new ArrayList<>();
+        for (int i = 0; i < generated.getImages().size(); i++) {
+            Path image = generated.getImages().get(i);
+            String extension = extensionFromName(image.getFileName().toString());
+            String fileName = String.format(Locale.ENGLISH, "%02d.%s", i + 1,
+                    isBlank(extension) ? "png" : extension);
+            Path target = targetDirectory.resolve(fileName).normalize();
+            assertInsideUploadRoot(target);
+            try {
+                Files.copy(image, target, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException ex) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "保存 ECMWF 生成图片失败", ex);
+            }
+            paths.add(publicPath(key, fileName));
+        }
         return persistRecord(key, paths);
     }
 

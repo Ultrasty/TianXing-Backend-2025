@@ -1,0 +1,5 @@
+xarray
+cfgrib
+eccodes
+netCDF4
+matplotlib
