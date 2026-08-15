@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -53,6 +54,12 @@ public interface ImgsMapper {
 
     @Delete("DELETE FROM imgs WHERE year = #{year} AND month = #{month} AND type = #{type}")
     int deleteByYearMonthType(@Param("year") String year, @Param("month") String month, @Param("type") String type);
+
+    @Update("UPDATE imgs SET data = #{data} WHERE id = #{id}")
+    int updateDataById(@Param("id") int id, @Param("data") String data);
+
+    @Delete("DELETE FROM imgs WHERE id = #{id}")
+    int deleteById(@Param("id") int id);
 
 
 }

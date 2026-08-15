@@ -2,6 +2,7 @@ package com.tongji.enso.mybatisdemo.controller;
 
 import com.tongji.enso.mybatisdemo.entity.admin.AdminApiResponse;
 import com.tongji.enso.mybatisdemo.service.admin.ForecastResultImagePublishService;
+import com.tongji.enso.mybatisdemo.service.admin.ForecastResultImagePublishService.DeletedSingleImage;
 import com.tongji.enso.mybatisdemo.service.admin.ForecastResultImagePublishService.ImageTypeOption;
 import com.tongji.enso.mybatisdemo.service.admin.ForecastResultImagePublishService.PublishedImage;
 import com.tongji.enso.mybatisdemo.service.admin.EcmwfRawDataService;
@@ -84,6 +85,20 @@ public class AdminForecastResultImageController {
         return AdminApiResponse.ok("预报结果图删除成功", response);
     }
 
+    @PostMapping("/delete-image")
+    public AdminApiResponse<Map<String, Object>> deletePublishedImage(@RequestBody DeleteSingleImageRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请求体不能为空");
+        }
+        DeletedSingleImage deletedImage = publishService.deletePublishedImage(
+                request.getYear(),
+                request.getMonth(),
+                request.getDay(),
+                request.getType(),
+                request.getImagePath());
+        return AdminApiResponse.ok("当前预报结果图删除成功", toResponse(deletedImage));
+    }
+
     private Map<String, Object> toResponse(PublishedImage publishedImage) {
         Map<String, Object> response = new HashMap<>();
         response.put("id", publishedImage.getId());
@@ -93,6 +108,18 @@ public class AdminForecastResultImageController {
         response.put("type", publishedImage.getType());
         response.put("paths", publishedImage.getPaths());
         response.put("verifyPath", publishedImage.getVerifyPath());
+        return response;
+    }
+
+    private Map<String, Object> toResponse(DeletedSingleImage deletedImage) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", deletedImage.getId());
+        response.put("year", deletedImage.getYear());
+        response.put("month", deletedImage.getMonth());
+        response.put("day", deletedImage.getDay());
+        response.put("type", deletedImage.getType());
+        response.put("deletedPath", deletedImage.getDeletedPath());
+        response.put("remainingPaths", deletedImage.getRemainingPaths());
         return response;
     }
 
@@ -141,6 +168,54 @@ public class AdminForecastResultImageController {
 
         public void setImageUrls(List<String> imageUrls) {
             this.imageUrls = imageUrls;
+        }
+    }
+
+    public static class DeleteSingleImageRequest {
+        private String year;
+        private String month;
+        private String day;
+        private String type;
+        private String imagePath;
+
+        public String getYear() {
+            return year;
+        }
+
+        public void setYear(String year) {
+            this.year = year;
+        }
+
+        public String getMonth() {
+            return month;
+        }
+
+        public void setMonth(String month) {
+            this.month = month;
+        }
+
+        public String getDay() {
+            return day;
+        }
+
+        public void setDay(String day) {
+            this.day = day;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getImagePath() {
+            return imagePath;
+        }
+
+        public void setImagePath(String imagePath) {
+            this.imagePath = imagePath;
         }
     }
 
