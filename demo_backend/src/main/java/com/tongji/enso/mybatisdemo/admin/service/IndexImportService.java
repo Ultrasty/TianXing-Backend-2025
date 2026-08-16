@@ -109,9 +109,11 @@ public class IndexImportService {
 
             JsonNode root = objectMapper.readTree(output);
             JsonNode dataNode = root.get("data");
-            if (dataNode == null || !dataNode.isArray()) {
+            if (dataNode == null || !dataNode.isArray() || dataNode.size() == 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "NOAA 抓取脚本未返回合法的 1D Index 数组");
             }
+
+            validateIndexValues(dataNode, request.getDataset());
 
             Map<String, Object> inserted = forecastDataService.createFromDecodedJson(
                     request.getDataset(),
@@ -134,6 +136,23 @@ public class IndexImportService {
         } finally {
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
+            }
+        }
+    }
+
+    static final double MAX_ABS_INDEX_VALUE = 5.0;
+
+    static void validateIndexValues(JsonNode dataNode, String dataset) {
+        for (JsonNode item : dataNode) {
+            if (!item.isNumber()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "NOAA 返回的指数序列包含非数值元素，已拒绝入库");
+            }
+            double v = item.doubleValue();
+            if (!Double.isFinite(v) || Math.abs(v) > MAX_ABS_INDEX_VALUE) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "NOAA 返回的 " + dataset + " 指数值 " + v + " 超出合理范围(±"
+                                + MAX_ABS_INDEX_VALUE + ")，疑似数据源异常，已拒绝入库");
             }
         }
     }
