@@ -978,6 +978,9 @@ public class EnsoController {
 
         // 使用给定年份查询所有数据
         String currentYearResult = ensoMapper.findObsEnsoByYear(year);
+        if (currentYearResult == null) {
+            return null; // 该年没有观测数据，交由调用方判空跳过，避免空指针
+        }
         List<Double> currentYearData = gson.fromJson(currentYearResult, listType);
 
         List<Double> current18MonthsData;  // 用来存放从本月起（包括本月）未来18个月的数据，直到真实数据用完为止
@@ -1122,6 +1125,11 @@ public class EnsoController {
             List<Double> preData = getPreData(queryYear, queryMonth);
             List<Double> obsData = getObsData(queryYear, queryMonth);
 
+            // 该月起报的预测或观测数据缺失时，跳过该月，避免空指针导致整个接口 500
+            if (preData == null || obsData == null) {
+                continue;
+            }
+
             // 两个数组可能不一样长，取短的
             int length = Math.min(preData.size(), obsData.size());
             preData = preData.subList(0, length);
@@ -1234,6 +1242,11 @@ public class EnsoController {
 
             List<Double> preData = getPreData(queryYear, queryMonth);
             List<Double> obsData = getObsData(queryYear, queryMonth);
+
+            // 该月起报的预测或观测数据缺失时，跳过该月，避免空指针导致整个接口 500
+            if (preData == null || obsData == null) {
+                continue;
+            }
 
             // 两个数组可能不一样长，取短的
             int length = Math.min(preData.size(), obsData.size());
