@@ -410,24 +410,28 @@ public class ImgsController {
         String title2 =year+"年"+month+"月 ENSO_MC 预测结果";
         String title3 =year+"年"+month+"月 ENSO_GTC 预测结果";
         List<String> titles=new ArrayList<>();
-        if (!imgsData1.isEmpty() && !imgsData2.isEmpty() && !imgsData3.isEmpty()) {
+        if (!imgsData1.isEmpty()) {
             String imgSrcData1 = imgsData1.get(0).getData();
-            String imgSrcData2 = imgsData2.get(0).getData();
-            String imgSrcData3 = imgsData3.get(0).getData();
             imgPaths1 = Arrays.asList(imgSrcData1.split(","));
-            imgPaths2 = Arrays.asList(imgSrcData2.split(","));
-            imgPaths3 = Arrays.asList(imgSrcData3.split(","));
             length1 = imgPaths1.size();
-            length2 = imgPaths2.size();
-            length3 = imgPaths3.size();
             for (int i = 0; i < length1; i++) {
                 imgPaths.add(imgPaths1.get(i));
                 titles.add(title1);
             }
+        }
+        if (!imgsData2.isEmpty()) {
+            String imgSrcData2 = imgsData2.get(0).getData();
+            imgPaths2 = Arrays.asList(imgSrcData2.split(","));
+            length2 = imgPaths2.size();
             for (int i = 0; i < length2; i++) {
                 imgPaths.add(imgPaths2.get(i));
                 titles.add(title2);
             }
+        }
+        if (!imgsData3.isEmpty()) {
+            String imgSrcData3 = imgsData3.get(0).getData();
+            imgPaths3 = Arrays.asList(imgSrcData3.split(","));
+            length3 = imgPaths3.size();
             for (int i = 0; i < length3; i++) {
                 imgPaths.add(imgPaths3.get(i));
                 titles.add(title3);

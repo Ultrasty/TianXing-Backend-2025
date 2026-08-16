@@ -4,7 +4,6 @@ import com.tongji.enso.mybatisdemo.entity.online.Imgs;
 
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -45,8 +44,10 @@ public interface ImgsMapper {
     @Select("SELECT COUNT(*) FROM imgs WHERE year = #{year} AND month = #{month} AND type = #{type}")
     int countByYearMonthType(@Param("year") String year, @Param("month") String month, @Param("type") String type);
 
-    @Insert("INSERT INTO imgs (year, month, day, type, data) VALUES (#{year}, #{month}, #{day}, #{type}, #{data})")
-    @Options(useGeneratedKeys = true, keyProperty = "id")
+    @Select("SELECT COALESCE(MAX(id), 0) FROM imgs")
+    int findMaxId();
+
+    @Insert("INSERT INTO imgs (id, year, month, day, type, data) VALUES (#{id}, #{year}, #{month}, #{day}, #{type}, #{data})")
     int insertImgs(Imgs imgs);
 
     @Delete("DELETE FROM imgs WHERE year = #{year} AND month = #{month} AND day = #{day} AND type = #{type}")
