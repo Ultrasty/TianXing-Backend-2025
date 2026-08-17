@@ -84,7 +84,7 @@ pnpm dev
 
 ## 3. 后台管理员登录凭据与账号说明
 
-首先运行demo_backend/src/test/resources/schema.sql，设置初始管理员账户密码
+首先运行src/main/resources/sql/admin_schema.sql，设置初始管理员账户密码
 
 * **默认管理员账号**：`admin`
 
