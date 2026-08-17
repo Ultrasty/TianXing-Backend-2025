@@ -84,11 +84,56 @@ pnpm dev
 
 ## 3. 后台管理员登录凭据与账号说明
 
+首先运行demo_backend/src/test/resources/schema.sql，设置初始管理员账户密码
+
 * **默认管理员账号**：`admin`
-* **默认管理员密码**：`12345678` *(安全规则要求密码长度必须 >= 8 位)*
-* **密码哈希存储**：首次启动后端服务时，系统会自动在数据库 `admin_user` 表中以 **PBKDF2 哈希加密** 格式安全保存管理员密码。
+
+* **默认管理员密码**：`password` *(安全规则要求密码长度必须 >= 8 位)*
+
 * **自定义初始管理员**：若需在本地改用其他初始账号密码，可在 `.vscode/launch.json` 的 `env` 节点中添加环境变量：
+  
   ```json
   "ADMIN_BOOTSTRAP_USERNAME": "自定义账号",
   "ADMIN_BOOTSTRAP_PASSWORD": "自定义密码(>=8位)"
   ```
+
+---
+
+## 4. Copernicus CDS 数据凭据配置（气压网格抓取）
+
+`demo_backend/scripts/ecmwf_fetch.py` 中气压网格场（`seasonal-monthly-single-levels` 季节预报）走 **Copernicus CDS API**，需要 CDS 平台账号的 API Key 认证，脚本内 `cdsapi.Client()` 会自动读取凭据文件。
+
+### 4.1 本机（Windows）配置
+凭据保存在当前用户主目录下的 `.cdsapirc` 文件（脚本运行时自动读取）：
+
+```
+C:\Users\<您的用户名>\.cdsapirc
+```
+
+文件内容为两行（`url` + `key`）：
+```properties
+url: https://cds.climate.copernicus.eu/api
+key: <您的 CDS API Key>
+```
+
+> CDS API Key 在 [Copernicus CDS 官网](https://cds.climate.copernicus.eu/) 注册账号后在个人页面生成。
+
+### 4.2 远程服务器配置（两种方式任选其一）
+**方式 A：复制同一份凭据文件到远程用户主目录**
+```bash
+# 从本机上传到远程（Linux 服务器示例）
+scp C:\Users\<您的用户名>\.cdsapirc root@<服务器IP>:~/.cdsapirc
+# 或
+rsync -av ~/.cdsapirc root@<服务器IP>:~/.cdsapirc
+```
+
+**方式 B：使用环境变量（优先级更高，便于 CI/CD 管理）**
+```bash
+export CDSAPI_URL="https://cds.climate.copernicus.eu/api"
+export CDSAPI_KEY="<您的 CDS API Key>"
+```
+
+### 4.3 注意事项
+* **凭据保密**：`.cdsapirc` 及环境变量中的 Key 属于敏感信息，严禁提交到 Git 仓库或写入文档/代码。
+* **API 迁移**：Copernicus 正在迁移到 v2 API，若出现 401 报错，请前往官网重新生成 Key 并更新 `url`。
+* **未配置时的行为**：未安装 `cdsapi` 或未配置凭据时，脚本会报错提示 `请执行 pip install cdsapi 并配置 ~/.cdsapirc`。
