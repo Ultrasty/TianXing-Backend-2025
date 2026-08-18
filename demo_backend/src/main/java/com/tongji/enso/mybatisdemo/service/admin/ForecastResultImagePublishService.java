@@ -28,10 +28,13 @@ import java.util.Set;
 @Service
 public class ForecastResultImagePublishService {
     private static final Set<String> SUPPORTED_TYPES = Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
-            "ENSO_ASC", "ENSO_MC", "ENSO_GTC"
+            "SIC", "NAO", "ENSO_ASC", "ENSO_MC", "ENSO_GTC",
+            "WEA_MSLP", "WEA_T2M", "WEA_TP", "WEA_U10"
     )));
 
-    private static final Set<String> DAY_REQUIRED_TYPES = Collections.emptySet();
+    private static final Set<String> DAY_REQUIRED_TYPES = Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
+            "SIC", "WEA_MSLP", "WEA_T2M", "WEA_TP", "WEA_U10"
+    )));
 
     private static final Set<String> ALLOWED_EXTENSIONS = Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
             "png", "jpg", "jpeg", "webp", "gif"
@@ -137,6 +140,12 @@ public class ForecastResultImagePublishService {
         options.add(new ImageTypeOption("ENSO_ASC", "ENSO ASC", "月", false, "ENSO 模态预测结果图"));
         options.add(new ImageTypeOption("ENSO_MC", "ENSO MC", "月", false, "ENSO 模态预测结果图"));
         options.add(new ImageTypeOption("ENSO_GTC", "ENSO GTC", "月", false, "ENSO 模态预测结果图"));
+        options.add(new ImageTypeOption("SIC", "海冰 SIC", "日", true, "海冰密集度预测结果图"));
+        options.add(new ImageTypeOption("NAO", "NAO 格点图", "月", false, "NAO 格点预测结果图"));
+        options.add(new ImageTypeOption("WEA_MSLP", "全球天气 MSLP", "日", true, "海平面气压预测结果图"));
+        options.add(new ImageTypeOption("WEA_T2M", "全球天气 T2M", "日", true, "2 米气温预测结果图"));
+        options.add(new ImageTypeOption("WEA_TP", "全球天气 TP", "日", true, "地表降水预测结果图"));
+        options.add(new ImageTypeOption("WEA_U10", "全球天气 U10", "日", true, "10 米风预测结果图"));
         return options;
     }
 
