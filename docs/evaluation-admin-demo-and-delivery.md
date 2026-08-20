@@ -127,7 +127,20 @@ NSIDC 为现有 `SIC_Ice-BCNet`、`prediction_IceTFT` 提供真实观测，计�
 
 ## 2. 启动联调环境
 
-### 后端（端口 8888）
+### 后端：快速本地 H2 模式（端口 8888）
+
+仅验证前后端连通、登录和接口状态时，不需要 MySQL。先在一个 PowerShell 中启动 H2 内存数据库模式：
+
+```powershell
+cd C:\VScodework\TianXingProject\TianXing-Backend-2026\demo_backend
+.\mvnw.cmd "-Dspring-boot.run.profiles=h2" spring-boot:run
+```
+
+看到 `Started MybatisDemoApplication` 后保持该窗口运行。H2 会创建仅供本地测试的 `admin / admin123` 管理员账号；数据会在进程结束后清空，因此不能用于展示已导入 MySQL 的真实评估数据。
+
+### 后端：本地 MySQL 模式（端口 8888）
+
+需要展示已发布的真实 SIC/SIE 数据时，改用下面的 MySQL 启动方式：
 
 ```powershell
 cd C:\VScodework\TianXingProject\TianXing-Backend-2026\demo_backend
@@ -147,12 +160,27 @@ $env:NSIDC_CACHE_DIR=(Join-Path $env:LOCALAPPDATA 'TianXing\nsidc-cache')
 
 ```powershell
 cd C:\VScodework\TianXingProject\TianXing-Frontend-2026
-Set-Content .env.local 'VITE_API_BASE_URL=http://localhost:8888'
+Set-Content .env.local @(
+  'VITE_API_PREFIX=http://localhost:8888'
+  'VITE_API_BASE_URL=http://localhost:8888'
+)
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+`VITE_API_PREFIX` 是公共海冰页面请求 `/seaice/**` 所使用的基址；`VITE_API_BASE_URL` 同时保留给管理端请求。每次修改 `.env.local` 后都必须先按 `Ctrl+C` 停止 Vite，再重新运行 `pnpm dev`，环境变量不会热更新。
+
 打开 `http://localhost:5173/tianxing/#/admin/login`，使用刚创建的管理员账号登录。`.env.local` 已被忽略，不应提交。
+
+### “可用日期初始化失败（无法连接服务器）”排查
+
+SIC 和 SIE 同时显示该提示时，先检查后端是否已启动，而不是先修改评估数据：
+
+```powershell
+Test-NetConnection localhost -Port 8888
+```
+
+预期看到 `TcpTestSucceeded : True`。若为 `False`，回到本节的后端窗口，确认 Spring Boot 已输出 `Started MybatisDemoApplication` 且没有启动异常；随后重启 Vite 并刷新浏览器。若端口已通但仍失败，在浏览器开发者工具的 Network 中检查 `/seaice/initial/SICError` 和 `/seaice/initial/SIEErrorAnalysis` 的实际请求地址是否为 `http://localhost:8888/...`。
 
 ## 3. 演示前预热一次 NSIDC 缓存
 
