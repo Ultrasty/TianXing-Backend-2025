@@ -1,0 +1,97 @@
+-- H2 本地联调最小业务库。仅用于启动前后端和手工验证，不替代 MySQL 备份数据。
+
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(64) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+MERGE INTO admin_users (username, password_hash, enabled)
+KEY (username)
+VALUES ('admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', TRUE);
+
+CREATE TABLE IF NOT EXISTS obs_enso (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45),
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS tj_enso (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    var_model VARCHAR(64) NOT NULL,
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS tj_nao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    data VARCHAR(100000) NOT NULL,
+    var_model VARCHAR(64) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS obs_nao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    var_model VARCHAR(64) NOT NULL,
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS nao_prediction (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    var_model VARCHAR(64) NOT NULL,
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS tj_sic (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    day VARCHAR(45) NOT NULL,
+    var_model VARCHAR(64) NOT NULL,
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS tj_sie (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    var_model VARCHAR(64) NOT NULL,
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS imgs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year VARCHAR(45) NOT NULL,
+    month VARCHAR(45) NOT NULL,
+    day VARCHAR(45),
+    type VARCHAR(64) NOT NULL,
+    data VARCHAR(100000)
+);
+
+CREATE TABLE IF NOT EXISTS info_sic_latlon (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lat VARCHAR(100000) NOT NULL,
+    lon VARCHAR(100000) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_metric_provenance (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(16) NOT NULL,
+    record_id BIGINT NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    prediction_model VARCHAR(64) NOT NULL,
+    observation_dataset VARCHAR(64) NOT NULL,
+    observation_version VARCHAR(32) NOT NULL,
+    details VARCHAR(100000) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (category, record_id)
+);
