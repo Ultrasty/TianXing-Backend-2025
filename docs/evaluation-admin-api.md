@@ -180,6 +180,18 @@ Content-Type: application/json
 
 `data` 必须是非空 JSON 数组，不能是字符串，也不能包含 `null`、空字符串、`NaN` 或 `Infinity`。`BAIS` 是历史库真实拼写。
 
+## SIC/SIE 公共展示契约
+
+下列读取接口保留为公共页面接口，**不需要管理员 JWT**；写入、更新、删除仍只能通过 `/admin/evaluations` 的鉴权接口完成。
+
+| 页面 | 公共接口 | 前端读取的字段 |
+| --- | --- | --- |
+| SIC 误差折线图 | `GET /seaice/error?year={year}&month={month}` | `{year}_BACC`、`{year}_per_BACC`、`{year}_RMSE`、`{year}_per_RMSE` |
+| SIC 误差箱线图 | `GET /seaice/errorBox?year={year}` | `withoutDA_withoutBC`、`withoutDA_withBC_RMSE`、`withDA_withoutBC_RMSE`、`MITgcm(with DA)withBC_RMSE` |
+| SIE 预测检验图 | `GET /seaice/predictionExamination/errorAnalysis?year={year}` | `RMSD`、`BAIS`、`VAR`、`CORRELATION`、`OBS_STD`、`PRE_STD` |
+
+初始化接口 `/seaice/initial/SICError`、`/seaice/initial/SICErrorBox`、`/seaice/initial/SIEErrorAnalysis` 只返回已具备完整固定指标集合的年月，避免公共页面跳转到无法展示的半成品数据。SIC 折线图按数值 `day` 排序，并将同一 `var_model` 的多日数组顺序聚合；因此后台更新会立即反映到公共接口，删除某一必需指标后该年月不再出现在初始化列表中。
+
 ## 通用响应与错误
 
 成功：

@@ -2,6 +2,7 @@ package com.tongji.enso.mybatisdemo.mapper.online;
 
 import com.tongji.enso.mybatisdemo.entity.online.Imgs;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -15,7 +16,7 @@ public interface ImgsMapperEnso {
      * @return
      */
     @Select("SELECT * FROM imgs WHERE year = #{year} AND month = #{month} AND type = #{type}")
-    List<Imgs> findImgsInfoByDayType(@RequestParam("year") String year, @RequestParam("month") String month, @RequestParam("type") String type);
+    List<Imgs> findImgsInfoByDayType(@Param("year") String year, @Param("month") String month, @Param("type") String type);
     @Select("SELECT * FROM imgs WHERE type = #{type}")
-    List<Imgs> findImgsInfoALL(@RequestParam("type") String type);
+    List<Imgs> findImgsInfoALL(@Param("type") String type);
 }

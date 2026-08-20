@@ -102,79 +102,79 @@ public class Tj_sieController {
         yAxis.put("type","value");
         option.put("yAxis",yAxis);
 
-        HashMap<String, Object> legend = new  HashMap<String, Object>();
-        String[] legend_data={"prediction", "mean", "upper", "lower"};
-        legend.put("data",legend_data);
-        legend.put("orient","horizontal");
-        legend.put("left","center");
-        legend.put("bottom","5");
-        option.put("legend",legend);
-
         // 查找的对象列表
         List<Tj_sie> sieList = tj_sieService.findSIEByMonth(year, month);
+        String[] order = {"prediction_IceTFT", "mean_IceTFT", "upper_IceTFT", "lower_IceTFT"};
+        Map<String, String> seriesNames = new HashMap<>();
+        seriesNames.put("prediction_IceTFT", "prediction");
+        seriesNames.put("mean_IceTFT", "mean");
+        seriesNames.put("upper_IceTFT", "upper");
+        seriesNames.put("lower_IceTFT", "lower");
+        sieList.sort(Comparator.comparingInt(item -> Arrays.asList(order).indexOf(item.getVar_model())));
+
         List<HashMap<String, Object>> series= new ArrayList<>();
-        // 使用循环添加指定数量的空 HashMap 到列表中
-        for (int i = 0; i < sieList.size(); i++) {
-            series.add(new HashMap<>());
-        }
+        List<String> legendData = new ArrayList<>();
         // 使用ObjectMapper进行JSON数据解析
         ObjectMapper objectMapper = new ObjectMapper();
         // 遍历返回结果中的每个Tj_sie对象，对其data字段进行解析，并替换为一维数组
-        int series_num=0;
         for (Tj_sie sie : sieList) {
+            String seriesName = seriesNames.get(sie.getVar_model());
+            if (seriesName == null) {
+                continue;
+            }
+
             String jsonData = sie.getData(); // 获取JSON数据的字符串形式
-            if(sie.getVar_model().equals("prediction_IceTFT"))
-                series.get(series_num).put("name","prediction");
-            if(sie.getVar_model().equals("mean_IceTFT"))
-                series.get(series_num).put("name","mean");
-            if(sie.getVar_model().equals("upper_IceTFT"))
-                series.get(series_num).put("name","upper");
-            if(sie.getVar_model().equals("lower_IceTFT"))
-                series.get(series_num).put("name","lower");
-            series.get(series_num).put("type","line");
             try {
                 // 将JSON数据转换为一维double数组
                 double[] dataArray = objectMapper.readValue(jsonData, double[].class);
                 // 将解析后的一维数组设置到Tj_sie对象的data字段中
                 sie.setTrans_data(dataArray);
-                series.get(series_num).put("data",dataArray);
+                HashMap<String, Object> currentSeries = new HashMap<>();
+                currentSeries.put("name", seriesName);
+                currentSeries.put("type", "line");
+                currentSeries.put("data", dataArray);
+                series.add(currentSeries);
+                legendData.add(seriesName);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            series_num++;
         }
-        // 确保数据顺序一致
-        Collections.sort(sieList, (a, b) -> {
-            String[] order = {"prediction_IceTFT", "mean_IceTFT", "upper_IceTFT", "lower_IceTFT"};
-            return Integer.compare(
-                Arrays.asList(order).indexOf(a.getVar_model()),
-                Arrays.asList(order).indexOf(b.getVar_model())
-            );
-        });
+
+        HashMap<String, Object> legend = new HashMap<>();
+        legend.put("data", legendData);
+        legend.put("orient", "horizontal");
+        legend.put("left", "center");
+        legend.put("bottom", "5");
+        option.put("legend", legend);
 
         // 动态生成描述文本
         double minValue = Double.MAX_VALUE;
-        String minMonthName = "";
+        int minIndex = -1;
         for (Tj_sie sie : sieList) {
             if ("prediction_IceTFT".equals(sie.getVar_model()) && sie.getTrans_data() != null) {
                 for (int i = 0; i < sie.getTrans_data().length; i++) {
                     if (sie.getTrans_data()[i] < minValue) {
                         minValue = sie.getTrans_data()[i];
-                        minMonthName = xAxis_data[i]; // xAxis_data是月份名称数组
+                        minIndex = i;
                     }
                 }
             }
         }
         option.put("series",series);
-        // 生成动态描述
-        int currentYear = Integer.parseInt(year);
-        String desc = String.format("%d年%sSIE极小值预测为%.4f，相较于%d年观测%s。预测显示海冰范围将比基准年%s。",
-            currentYear, minMonthName, minValue,
-            currentYear-1, 
-            minValue < 4.5 ? "偏低" : "偏高", // 4.5为示例,不符合逻辑!!
-            minValue < 5.0 ? "整体偏少" : "整体偏多"); // 5.0为示例
-
-        return_hashmap.put("description", desc);
+        if (minIndex >= 0) {
+            LocalDate minimumDate = startDate.plusMonths(minIndex);
+            return_hashmap.put(
+                "description",
+                String.format(
+                    "%d年%d月SIE预测极小值为%.4f。",
+                    minimumDate.getYear(),
+                    minimumDate.getMonthValue(),
+                    minValue
+                )
+            );
+        } else {
+            return_hashmap.put("description", "该月份暂无SIE预测数据。");
+        }
         
 
         
@@ -215,20 +215,14 @@ public class Tj_sieController {
     @GetMapping("/predictionExamination/errorAnalysis")
     @ApiOperation(value = "SIE预测误差分析", notes = "查询年份及其前几年的rmsd和相关系数等指标的数据，文本描述")
     public HashMap<String ,Object> findErrorAnalysis(@RequestParam String year){
-        // 要返回的对象列表
-        List<Tj_sie> sieList = tj_sieService.findByYear(year);
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
+        List<Tj_sie> sieList = tj_sieService.findErrorAnalysisByYear(year);
+        HashMap<String, Object> return_hashmap = new LinkedHashMap<>();
         ObjectMapper objectMapper = new ObjectMapper();
-        double[] dataArray = null;
-        // 遍历返回结果中的每个Tj_sie对象，对其data字段进行解析，并替换为一维数组
         for (Tj_sie sie : sieList) {
-            String jsonData = sie.getData(); // 获取JSON数据的字符串形式
             try {
-                // 将JSON数据转换为一维double数组
-                dataArray = objectMapper.readValue(jsonData, double[].class);
-                return_hashmap.put(sie.getVar_model(), dataArray);
+                return_hashmap.put(sie.getVar_model(), objectMapper.readValue(sie.getData(), double[].class));
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new IllegalStateException("SIE评估数据格式不正确: " + sie.getVar_model(), e);
             }
         }
 
@@ -241,33 +235,54 @@ public class Tj_sieController {
     @GetMapping("/initial/SIEprediction")
     @ApiOperation(value = "SIE可查询日期与最新预报结果", notes = "查询SIE指数预测结果图的可查询日期和最新预报")
     public HashMap<String ,Object> initialSIEprediction(){
-        //List<String> yearList = Arrays.asList("2023");
-        //List<String> monthList=Arrays.asList("1");
-        // 要返回的HashMap
-        //HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
-        //return_hashmap.put("yearList",yearList);
-        //return_hashmap.put("monthList",monthList);
-        // 要返回的对象列表
-        //List<Tj_sie> sieList = tj_sieService.findSIEByMonth("2023", "1");
-        // 从数据库获取可用年份和月份
-        List<String> availableYears = tj_sieService.findAvailableYears();
-        List<String> availableMonths = tj_sieService.findAvailableMonths();
+        List<Tj_sie> predictionRows = new ArrayList<>(tj_sieService.findAllSIE());
+        predictionRows.removeIf(item -> !"prediction_IceTFT".equals(item.getVar_model())
+                || item.getYear() == null
+                || item.getMonth() == null);
+        predictionRows.sort(Comparator
+                .comparingInt((Tj_sie item) -> Integer.parseInt(item.getYear()))
+                .thenComparingInt(item -> Integer.parseInt(item.getMonth())));
 
-        // 获取最新日期
-        Map<String, String> latestDate = tj_sieService.findLatestDate();
-        String latestYear = latestDate.get("year");
-        String latestMonth = latestDate.get("month");
+        LinkedHashMap<String, Tj_sie> uniqueMonths = new LinkedHashMap<>();
+        for (Tj_sie item : predictionRows) {
+            uniqueMonths.put(item.getYear() + "-" + item.getMonth(), item);
+        }
+        List<Tj_sie> availablePredictionMonths = new ArrayList<>(uniqueMonths.values());
+
+        HashMap<String, Object> return_hashmap = new LinkedHashMap<>();
+        if (availablePredictionMonths.isEmpty()) {
+            return_hashmap.put("yearList", Collections.emptyList());
+            return_hashmap.put("monthList", Collections.emptyList());
+            return_hashmap.put("availableMonths", Collections.emptyList());
+            return_hashmap.put("sieInitial", Collections.emptyList());
+            return return_hashmap;
+        }
+
+        Tj_sie latest = availablePredictionMonths.get(availablePredictionMonths.size() - 1);
+        String latestYear = latest.getYear();
+        String latestMonth = latest.getMonth();
+
+        LinkedHashSet<String> availableYears = new LinkedHashSet<>();
+        LinkedHashSet<String> availableMonths = new LinkedHashSet<>();
+        List<Map<String, String>> exactAvailableMonths = new ArrayList<>();
+        for (Tj_sie item : availablePredictionMonths) {
+            availableYears.add(item.getYear());
+            availableMonths.add(item.getMonth());
+            Map<String, String> date = new LinkedHashMap<>();
+            date.put("year", item.getYear());
+            date.put("month", item.getMonth());
+            exactAvailableMonths.add(date);
+        }
 
         // 查询最新数据
         List<Tj_sie> sieList = tj_sieService.findSIEByMonth(latestYear, latestMonth);
 
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>() {{
-            put("yearList", availableYears);
-            put("monthList", availableMonths);
-            put("defaultYear", latestYear);
-            put("defaultMonth", latestMonth);
-            put("sieInitial", sieList);
-        }};
+        return_hashmap.put("yearList", new ArrayList<>(availableYears));
+        return_hashmap.put("monthList", new ArrayList<>(availableMonths));
+        return_hashmap.put("availableMonths", exactAvailableMonths);
+        return_hashmap.put("defaultYear", latestYear);
+        return_hashmap.put("defaultMonth", latestMonth);
+        return_hashmap.put("sieInitial", sieList);
         // 使用ObjectMapper进行JSON数据解析
         ObjectMapper objectMapper = new ObjectMapper();
         // 遍历返回结果中的每个Tj_sie对象，对其data字段进行解析，并替换为一维数组
@@ -293,17 +308,20 @@ public class Tj_sieController {
     @GetMapping("/initial/SIEErrorAnalysis")
     @ApiOperation(notes = "SIE预测误差分析可查询日期和最新结果", value = "查询SIE误差分析图的可查询日期和最新结果")
     public HashMap<String,Object> initialSIEerrorAnalysis(){
-        List<String> yearList=Arrays.asList("2022");
-        List<String> monthList=Arrays.asList("1");
-        // 要返回的HashMap
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
-        return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList",monthList);
+        List<String> yearList = tj_sieService.findErrorAnalysisAvailableYears();
 
-        Map<String,Object> SIEerrorList =findErrorAnalysis("2022");
-        return_hashmap.put("SIEerrorInitial",SIEerrorList);
+        HashMap<String, Object> result = new LinkedHashMap<>();
+        result.put("yearList", yearList);
+        result.put("monthList", Collections.singletonList("1"));
+        if (yearList.isEmpty()) {
+            result.put("SIEerrorInitial", Collections.emptyMap());
+            return result;
+        }
 
-        return return_hashmap;
+        String defaultYear = yearList.get(yearList.size() - 1);
+        result.put("defaultYear", defaultYear);
+        result.put("SIEerrorInitial", findErrorAnalysis(defaultYear));
+        return result;
     }
     @ExceptionHandler(DataNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(DataNotFoundException ex) {

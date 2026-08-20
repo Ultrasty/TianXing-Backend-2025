@@ -30,7 +30,7 @@ public interface EnsoMapper {
      * @return
      */
     @Select("SELECT * FROM tj_enso WHERE var_model = #{var_model}")
-    List<Tj_enso> findTj_ensoInfoByType(@RequestParam("var_model") String var_model);
+    List<Tj_enso> findTj_ensoInfoByType(@Param("var_model") String var_model);
 
     /**
      * 从 obs_enso 表中查询指定年的数据

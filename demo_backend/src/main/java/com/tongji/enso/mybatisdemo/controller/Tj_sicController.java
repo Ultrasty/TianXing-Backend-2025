@@ -2,6 +2,7 @@ package com.tongji.enso.mybatisdemo.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tongji.enso.mybatisdemo.entity.online.Imgs;
 import com.tongji.enso.mybatisdemo.entity.online.Tj_sic;
 import com.tongji.enso.mybatisdemo.service.online.ImgsService;
 import com.tongji.enso.mybatisdemo.service.online.Tj_sicService;
@@ -40,6 +41,9 @@ public class Tj_sicController {
     public List<String> findSICPredictionByDate(@RequestParam String year,@RequestParam String month,@RequestParam String day){
 
         String data = imgsservice.findSICImgByDate(year,month,day);
+        if (data == null || data.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
         int index = 0;
         List<String> sicList=new ArrayList<>();
 
@@ -127,52 +131,72 @@ public class Tj_sicController {
     @GetMapping("/initial/SICprediction")
     @ApiOperation(notes = "SIC可查询日期及最新预报结果", value = "查询SIC预测结果图的可查询日期和最新预报结果")
     public HashMap<String,Object> initialSICprediction(){
-        //List<String> yearList=Arrays.asList("2023");
-        //List<String> monthList=Arrays.asList("6");
-        //List<String> dateList=Arrays.asList("5","12","19","26");
-        // 获取可用年份
-        List<String> yearList = tj_sicservice.getAvailableYears();
-        
-        // 获取最新日期
-        Map<String, String> latestDate = tj_sicservice.getLatestDate();
-        if (latestDate == null || latestDate.isEmpty()) {
-            return createEmptyResponse("yearList", "monthList", "dateList", "sicInitial");
+        List<Imgs> sicImages = new ArrayList<>(imgsservice.findAllByType("SIC"));
+        sicImages.removeIf(item -> item.getYear() == null
+                || item.getMonth() == null
+                || item.getDay() == null
+                || item.getData() == null
+                || item.getData().isEmpty());
+        sicImages.sort(Comparator
+                .comparingInt((Imgs item) -> Integer.parseInt(item.getYear()))
+                .thenComparingInt(item -> Integer.parseInt(item.getMonth()))
+                .thenComparingInt(item -> Integer.parseInt(item.getDay())));
+
+        LinkedHashMap<String, Imgs> uniqueDates = new LinkedHashMap<>();
+        for (Imgs item : sicImages) {
+            uniqueDates.put(
+                    item.getYear() + "-" + item.getMonth() + "-" + item.getDay(),
+                    item
+            );
         }
-        
-        String defaultYear = latestDate.get("year");
-        String defaultMonth = latestDate.get("month");
-        String defaultDay = latestDate.get("day");
-        
-        // 获取默认年份下的月份
-        List<String> monthList = tj_sicservice.getAvailableMonths(defaultYear);
-        
-        // 获取默认年月下的日期
-        List<String> dateList = tj_sicservice.getAvailableDays(defaultYear, defaultMonth);
-        // 要返回的HashMap
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
-        return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList",monthList);
-        return_hashmap.put("dateList",dateList);
+        List<Imgs> availableImageDates = new ArrayList<>(uniqueDates.values());
 
-        //String data = imgsservice.findSICImgByDate("2023","6","26");
-        //获取最新预报结果
-        String data = imgsservice.findSICImgByDate(defaultYear, defaultMonth, defaultDay);
-        //字符串分割逻辑
-        // int index = 0;
-        // List<String> sicList=new ArrayList<>();
+        HashMap<String, Object> result = new LinkedHashMap<>();
+        if (availableImageDates.isEmpty()) {
+            result.put("yearList", Collections.emptyList());
+            result.put("monthList", Collections.emptyList());
+            result.put("dateList", Collections.emptyList());
+            result.put("availableDates", Collections.emptyList());
+            result.put("sicInitial", Collections.emptyList());
+            return result;
+        }
 
-        // for(int i = 0; i<data.length();i++){
-        //     char c = data.charAt(i);
-        //     if(c == ','){
-        //         sicList.add(data.substring(index,i));
-        //         index = i + 1;
-        //     }
-        // }
-        // sicList.add(data.substring(index));
+        Imgs latest = availableImageDates.get(availableImageDates.size() - 1);
+        String defaultYear = latest.getYear();
+        String defaultMonth = latest.getMonth();
+        String defaultDay = latest.getDay();
 
-        return_hashmap.put("sicInitial",splitCommaSeparatedString(data));
+        List<Map<String, String>> availableDates = new ArrayList<>();
+        LinkedHashSet<String> years = new LinkedHashSet<>();
+        LinkedHashSet<String> latestYearMonths = new LinkedHashSet<>();
+        LinkedHashSet<String> latestMonthDays = new LinkedHashSet<>();
 
-        return return_hashmap;
+        for (Imgs item : availableImageDates) {
+            Map<String, String> date = new LinkedHashMap<>();
+            date.put("year", item.getYear());
+            date.put("month", item.getMonth());
+            date.put("day", item.getDay());
+            availableDates.add(date);
+            years.add(item.getYear());
+
+            if (defaultYear.equals(item.getYear())) {
+                latestYearMonths.add(item.getMonth());
+            }
+            if (defaultYear.equals(item.getYear())
+                    && defaultMonth.equals(item.getMonth())) {
+                latestMonthDays.add(item.getDay());
+            }
+        }
+
+        result.put("yearList", new ArrayList<>(years));
+        result.put("monthList", new ArrayList<>(latestYearMonths));
+        result.put("dateList", new ArrayList<>(latestMonthDays));
+        result.put("availableDates", availableDates);
+        result.put("defaultYear", defaultYear);
+        result.put("defaultMonth", defaultMonth);
+        result.put("defaultDay", defaultDay);
+        result.put("sicInitial", splitCommaSeparatedString(latest.getData()));
+        return result;
     }
 
     /**
@@ -181,19 +205,37 @@ public class Tj_sicController {
     @GetMapping("/initial/SICError")
     @ApiOperation(notes = "SIC预测结果误差可查询日期和最新结果", value = "查询SIC预测结果误差折线图的可查询日期和最新结果")
     public HashMap<String,Object> initialSICerror(){
-        List<String> yearList=Arrays.asList("2023");
-        List<String> monthList=Arrays.asList("1");
-        List<String> dateList=Arrays.asList("1");
-        // 要返回的HashMap
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
-        return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList",monthList);
-        return_hashmap.put("dateList",dateList);
+        List<Map<String, String>> availableMonths = tj_sicservice.findErrorAvailableMonths();
 
-        Map<String,Object> SICerrorList =findSICErrorByMonth("2023","1");
-        return_hashmap.put("SICerrorInitial",SICerrorList);
+        HashMap<String, Object> result = new LinkedHashMap<>();
+        result.put("availableMonths", availableMonths);
+        if (availableMonths.isEmpty()) {
+            result.put("yearList", Collections.emptyList());
+            result.put("monthList", Collections.emptyList());
+            result.put("dateList", Collections.emptyList());
+            result.put("SICerrorInitial", Collections.emptyMap());
+            return result;
+        }
 
-        return return_hashmap;
+        Map<String, String> latest = availableMonths.get(availableMonths.size() - 1);
+        String defaultYear = latest.get("year");
+        String defaultMonth = latest.get("month");
+        LinkedHashSet<String> years = new LinkedHashSet<>();
+        LinkedHashSet<String> latestYearMonths = new LinkedHashSet<>();
+        for (Map<String, String> date : availableMonths) {
+            years.add(date.get("year"));
+            if (defaultYear.equals(date.get("year"))) {
+                latestYearMonths.add(date.get("month"));
+            }
+        }
+
+        result.put("yearList", new ArrayList<>(years));
+        result.put("monthList", new ArrayList<>(latestYearMonths));
+        result.put("dateList", Collections.singletonList("1"));
+        result.put("defaultYear", defaultYear);
+        result.put("defaultMonth", defaultMonth);
+        result.put("SICerrorInitial", findSICErrorByMonth(defaultYear, defaultMonth));
+        return result;
     }
 
     /**
@@ -202,19 +244,21 @@ public class Tj_sicController {
     @GetMapping("/initial/SICErrorBox")
     @ApiOperation(notes = "SIC回报结果误差可查询日期和最新结果", value = "查询SIC回报结果误差箱型图的可查询日期和最新结果")
     public Map<String,Object> initialSICerrorbox(){
-        List<String> yearList=Arrays.asList("2022");
-        List<String> monthList=Arrays.asList("1");
-        List<String> dateList=Arrays.asList("1");
-        // 要返回的HashMap
-        Map<String, Object> return_hashmap = new HashMap<String, Object>();
-        return_hashmap.put("yearList",yearList);
-        return_hashmap.put("monthList",monthList);
-        return_hashmap.put("dateList",dateList);
+        List<String> yearList = tj_sicservice.findErrorBoxAvailableYears();
 
-        Map<String,Object> SICerrorboxList =findSICErrorBoxByYear("2022");
-        return_hashmap.put("SICerrorboxInitial",SICerrorboxList);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("yearList", yearList);
+        result.put("monthList", Collections.singletonList("1"));
+        result.put("dateList", Collections.singletonList("1"));
+        if (yearList.isEmpty()) {
+            result.put("SICerrorboxInitial", Collections.emptyMap());
+            return result;
+        }
 
-        return return_hashmap;
+        String defaultYear = yearList.get(yearList.size() - 1);
+        result.put("defaultYear", defaultYear);
+        result.put("SICerrorboxInitial", findSICErrorBoxByYear(defaultYear));
+        return result;
     }
     // 空响应创建方法
     private HashMap<String, Object> createEmptyResponse(String... keys) {

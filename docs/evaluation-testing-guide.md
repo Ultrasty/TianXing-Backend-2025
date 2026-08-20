@@ -6,7 +6,7 @@
 
 | 层级 | 是否连接本地 MySQL | 是否访问外网 | 验证内容 |
 | --- | --- | --- | --- |
-| 自动化测试 | 否，使用 H2 | 否 | 鉴权、CRUD、导入、事务、NSIDC 发布与来源留痕 |
+| 自动化测试 | 否，使用 H2 | 否 | 鉴权、CRUD、导入、事务、NSIDC 发布与来源留痕、SIC/SIE 公共展示闭环 |
 | Python 指标测试 | 否 | 否 | SIC 单位/BACC 公式、SIE 时效匹配 |
 | 前端生产构建 | 否 | 否 | Vue/TypeScript/打包完整性 |
 | 本地联调 | 是 | 否 | 浏览器到 Spring Boot 再到 MySQL 的闭环 |
@@ -29,12 +29,12 @@ py -3.12 scripts\test_nsidc_evaluation.py
 通过标准：
 
 ```text
-Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
 Ran 4 tests
 OK
 ```
 
-Maven 日志中出现一次 H2 `Check constraint violation` 堆栈是批量事务回滚用例故意制造的失败。只要最终是 `BUILD SUCCESS` 且 14 个测试零失败，就属于通过。
+Maven 日志中出现一次 H2 `Check constraint violation` 堆栈是批量事务回滚用例故意制造的失败。只要最终是 `BUILD SUCCESS` 且 15 个测试零失败，就属于通过。
 
 ### 前端构建
 
@@ -209,4 +209,4 @@ LIMIT 10;
 
 ## 9. 交付证据截图
 
-建议保留以下 5 张截图：登录成功、SIE NSIDC 结果、SIC NSIDC 结果及来源详情、2.7 更新前后、2.8 删除后。另保存三段命令末尾：Maven 14/0/0、Python 4 tests OK、Vite build success。
+建议保留以下 5 张截图：登录成功、SIE NSIDC 结果、SIC NSIDC 结果及来源详情、2.7 更新前后、2.8 删除后。另保存三段命令末尾：Maven 15/0/0、Python 4 tests OK、Vite build success。

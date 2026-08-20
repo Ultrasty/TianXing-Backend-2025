@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @MapperScans({
         @MapperScan("com.tongji.enso.mybatisdemo.mapper.online"),
         @MapperScan(basePackages = {
-                "com.tongji.enso.mybatisdemo.admin.auth",
+                "com.tongji.enso.mybatisdemo.mapper.admin",
                 "com.tongji.enso.mybatisdemo.admin.evaluation"
         }, annotationClass = Mapper.class)
 })

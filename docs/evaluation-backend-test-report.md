@@ -1,16 +1,16 @@
 # 评估数据管理联调测试报告
 
-验证日期：2026-08-15。
+验证日期：2026-08-20。
 
 复现命令、逐项验收步骤和预期结果见 `docs/evaluation-testing-guide.md`。本报告记录已经完成的验证结果，不代替交付机器上的本地 MySQL 验收。
 
 ## 自动化结果
 
-- 后端 `mvnw.cmd test`：14 个测试全部通过。
+- 后端 `mvnw.cmd test`：15 个测试全部通过。
 - Python `py -3.12 scripts/test_nsidc_evaluation.py`：4 个指标/匹配测试全部通过。
 - 前端 `pnpm install --frozen-lockfile`：通过。
 - 前端 `pnpm build`：通过；仅有现有 Sass legacy API 和大 chunk 警告。
-- 后端测试覆盖管理员登录/JWT、四类数据 CRUD、手动导入、NSIDC 评估发布与来源留痕、上游指标 UPSERT、非指标批次拒绝、重复拒绝、批次回滚、字段白名单，以及外部脚本请求参数安全校验。
+- 后端测试覆盖管理员登录/JWT、四类数据 CRUD、手动导入、NSIDC 评估发布与来源留痕、上游指标 UPSERT、非指标批次拒绝、重复拒绝、批次回滚、字段白名单、外部脚本请求参数安全校验，以及 SIC/SIE 管理端发布/更新/删除到公共接口的展示闭环。
 - 测试日志中的一次 H2 约束异常是用于验证整批回滚的预期场景，最终结果仍为成功。
 
 ## 真实 MySQL 8 验证

@@ -1,7 +1,9 @@
 package com.tongji.enso.mybatisdemo.admin.evaluation;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class EvaluationBatchImportRequest {
     private String source;
     private String dataKind;

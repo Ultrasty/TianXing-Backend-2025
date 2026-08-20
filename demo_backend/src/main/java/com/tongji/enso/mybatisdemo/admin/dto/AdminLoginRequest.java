@@ -1,15 +1,7 @@
-package com.tongji.enso.mybatisdemo.admin.auth;
+package com.tongji.enso.mybatisdemo.admin.dto;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
-
-public class LoginRequest {
-    @NotBlank
-    @Size(max = 64)
+public class AdminLoginRequest {
     private String username;
-
-    @NotBlank
-    @Size(max = 128)
     private String password;
 
     public String getUsername() {

@@ -27,6 +27,15 @@ public class Tj_sicService {
     public List<Tj_sic> findErrorBoxByYearAndModel(String year){
         return tj_sicmapper.findErrorBoxByYearAndModel(year);
     }
+
+    public List<Map<String, String>> findErrorAvailableMonths() {
+        return tj_sicmapper.findErrorAvailableMonths();
+    }
+
+    public List<String> findErrorBoxAvailableYears() {
+        return tj_sicmapper.findErrorBoxAvailableYears();
+    }
+
     public void createTj_sic(Tj_sic tjSic) {
         tj_sicmapper.insertTj_sic(tjSic);
     }

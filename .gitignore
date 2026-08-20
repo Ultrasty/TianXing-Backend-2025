@@ -4,4 +4,10 @@
 *.pyc
 .venv/
 demo_backend/.venv/
+.agents/
+*.agent.log
+*.iml
+.DS_Store
+Thumbs.db
+target/
 demo_backend/target/
