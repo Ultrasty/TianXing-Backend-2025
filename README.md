@@ -21,4 +21,12 @@ demo中示例了一个Meteo实体对象的查询和简单数据加工过程（Me
 
 同时，为了方便代码阅读，请在开发过程中合理正确地使用注释、命名变量，避免带来过高的维护成本。
 
+## 2.7–2.9 管理端交付文档
+
+- 环境准备与演示：`docs/evaluation-admin-demo-and-delivery.md`
+- 可直接执行的测试说明：`docs/evaluation-testing-guide.md`
+- 管理 API：`docs/evaluation-admin-api.md`
+- NSIDC SIC/SIE 科学口径：`docs/nsidc-scientific-evaluation.md`
+- 已完成的测试结果：`docs/evaluation-backend-test-report.md`
+
 

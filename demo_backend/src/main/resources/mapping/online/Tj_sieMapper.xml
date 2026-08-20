@@ -17,13 +17,28 @@
         select * from tj_sie where year=#{year}
     </select>
 
+    <select id="findErrorAnalysisByYear" resultType="Tj_sie">
+        select * from tj_sie
+        where year=#{year}
+          and var_model in ('RMSD', 'BAIS', 'VAR', 'CORRELATION', 'OBS_STD', 'PRE_STD')
+        order by case var_model
+            when 'RMSD' then 1
+            when 'BAIS' then 2
+            when 'VAR' then 3
+            when 'CORRELATION' then 4
+            when 'OBS_STD' then 5
+            when 'PRE_STD' then 6
+            else 99
+        end
+    </select>
+
     <select id="findErrorAnalysisAvailableYears" resultType="string">
         SELECT year
         FROM tj_sie
         WHERE var_model IN ('RMSD', 'BAIS', 'VAR', 'CORRELATION', 'OBS_STD', 'PRE_STD')
         GROUP BY year
         HAVING COUNT(DISTINCT var_model) = 6
-        ORDER BY CAST(year AS UNSIGNED)
+        ORDER BY CAST(year AS DECIMAL)
     </select>
     <!-- 新增SQL -->
     <select id="selectDistinctYears" resultType="string">

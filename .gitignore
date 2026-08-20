@@ -1,18 +1,14 @@
-# VS Code local configs
+.idea/
 .vscode/
-
-# Agents & AI Local Configs
+**/__pycache__/
+*.pyc
+.venv/
+demo_backend/.venv/
 .agents/
 *.agent.log
-
-# IntelliJ IDEA
-.idea/
 *.iml
-
-# OS generated files
+.env.local
 .DS_Store
 Thumbs.db
-
-# Maven
 target/
 demo_backend/target/

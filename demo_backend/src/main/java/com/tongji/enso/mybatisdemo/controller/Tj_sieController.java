@@ -215,20 +215,14 @@ public class Tj_sieController {
     @GetMapping("/predictionExamination/errorAnalysis")
     @ApiOperation(value = "SIE预测误差分析", notes = "查询年份及其前几年的rmsd和相关系数等指标的数据，文本描述")
     public HashMap<String ,Object> findErrorAnalysis(@RequestParam String year){
-        // 要返回的对象列表
-        List<Tj_sie> sieList = tj_sieService.findByYear(year);
-        HashMap<String, Object> return_hashmap = new HashMap<String, Object>();
+        List<Tj_sie> sieList = tj_sieService.findErrorAnalysisByYear(year);
+        HashMap<String, Object> return_hashmap = new LinkedHashMap<>();
         ObjectMapper objectMapper = new ObjectMapper();
-        double[] dataArray = null;
-        // 遍历返回结果中的每个Tj_sie对象，对其data字段进行解析，并替换为一维数组
         for (Tj_sie sie : sieList) {
-            String jsonData = sie.getData(); // 获取JSON数据的字符串形式
             try {
-                // 将JSON数据转换为一维double数组
-                dataArray = objectMapper.readValue(jsonData, double[].class);
-                return_hashmap.put(sie.getVar_model(), dataArray);
+                return_hashmap.put(sie.getVar_model(), objectMapper.readValue(sie.getData(), double[].class));
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new IllegalStateException("SIE评估数据格式不正确: " + sie.getVar_model(), e);
             }
         }
 

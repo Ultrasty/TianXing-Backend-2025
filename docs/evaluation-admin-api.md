@@ -18,7 +18,8 @@ Authorization: Bearer <JWT>
 | PUT | `/admin/evaluations/{category}/{id}` | 更新完整记录 | 200 |
 | DELETE | `/admin/evaluations/{category}/{id}` | 删除记录 | 200 |
 | POST | `/admin/evaluations/import/manual` | 手动 JSON 文件导入 | 200 |
-| POST | `/admin/evaluations/import/batch` | ECMWF 标准 JSON 入库 | 200 |
+| POST | `/admin/evaluations/nsidc/evaluate` | 用现有 Ice-BCNet/IceTFT 预测和 NSIDC 观测计算 SIC/SIE 指标，可预览或发布 | 200 |
+| POST | `/admin/evaluations/import/batch` | 受信上游已计算指标批量入库 | 200 |
 
 ## 登录
 
@@ -87,7 +88,56 @@ Content-Type: multipart/form-data
 }
 ```
 
-## ECMWF 入库
+## NSIDC 科学评估
+
+### SIC：Ice-BCNet 对 MASAM2 V2
+
+```http
+POST /admin/evaluations/nsidc/evaluate
+Content-Type: application/json
+```
+
+```json
+{
+  "category": "SIC",
+  "year": "2023",
+  "month": "4",
+  "day": "22",
+  "leadStartOffsetDays": 0,
+  "mode": "PREVIEW"
+}
+```
+
+后端从 `tj_sic` 读取该日期的 `SIC_Ice-BCNet` 7 天预测，从 `info_sic_latlon` 读取 384×420 模型网格；下载 NSIDC G10005 MASAM2 V2 月度 NetCDF，将每日观测双线性重投影到模型网格并屏蔽无效/陆地邻点。输出：
+
+- `{year}_RMSE`：按模型网格面积加权的 SIC 格点 RMSE，按现有库口径保存为 0–1 分数。
+- `{year}_BACC`：以 SIC > 15% 判定海冰，按 `1 - IIEE / 月度 active-region 面积` 计算，保存为 0–1。active-region 分母来自 NSIDC G02135 V4 在 1991–2020 年对应日历月的最大日 SIE。
+- `diagnostics`：每个时效的有效日期、格点数、有效面积、active-region 面积、灵敏度、特异度和 IIEE。
+
+`leadStartOffsetDays=0` 表示数组第一个场对应起报当天；若数据生产约定第一个场对应次日，传 `1`。不允许猜测其它偏移。
+
+### SIE：IceTFT 对 Sea Ice Index V4
+
+```json
+{
+  "category": "SIE",
+  "year": "2022",
+  "mode": "PREVIEW"
+}
+```
+
+后端读取该年的全部 `prediction_IceTFT` 月起报；每条 12 值数组的索引 0 对应起报月，索引 1–11 对应后续月份。观测来自 NSIDC G02135 Sea Ice Index V4 北半球月平均 extent。系统按提前 1–12 月归组，输出 `RMSD`、`BAIS`、`VAR`、`CORRELATION`、`OBS_STD`、`PRE_STD`；`BAIS` 延用历史表拼写，含义为平均偏差的平方。
+
+`mode` 的含义：
+
+- `PREVIEW`：计算并返回，不改数据库。
+- `UPSERT`：在同一事务中新增或更新指标，同时写入 `evaluation_metric_provenance`。
+
+响应固定包含 `source=NSIDC`、`dataKind=EVALUATION_METRIC`、预测模型、观测数据集/版本/DOI、访问时间、源 URL、SHA-256、匹配规则、公式说明和发布结果。完整方法见 `docs/nsidc-scientific-evaluation.md`。
+
+## 上游已计算指标批量入库
+
+受信上游程序完成观测匹配和指标计算后，可通过批量接口发布结果：
 
 ```http
 POST /admin/evaluations/import/batch
@@ -97,6 +147,7 @@ Content-Type: application/json
 ```json
 {
   "source": "ECMWF",
+  "dataKind": "EVALUATION_METRIC",
   "mode": "UPSERT",
   "category": "SIE",
   "records": [
@@ -107,7 +158,10 @@ Content-Type: application/json
 
 - `REJECT`：任何非法或重复记录都会使整批零写入。
 - `UPSERT`：存在则更新，不存在则新增；任一写入失败时整批回滚。
-- 单批默认最多 500 条；ECMWF 入口的 `source` 必须为 `ECMWF`。
+- 单批默认最多 500 条；这个兼容入口当前要求 `source=ECMWF`。
+- `dataKind` 必须为 `EVALUATION_METRIC`；缺失该字段或提交其它类型均返回 `400 IMPORT_FILE_INVALID`，不会写库。
+
+批量接口只接收完成领域计算的评估指标，不能提交未完成的中间数据。
 
 成功结果：
 
@@ -125,6 +179,18 @@ Content-Type: application/json
 | SIE | `year,month,varModel,data` | `year+month+varModel` | `RMSD`、`BAIS`、`VAR`、`CORRELATION`、`OBS_STD`、`PRE_STD` |
 
 `data` 必须是非空 JSON 数组，不能是字符串，也不能包含 `null`、空字符串、`NaN` 或 `Infinity`。`BAIS` 是历史库真实拼写。
+
+## SIC/SIE 公共展示契约
+
+下列读取接口保留为公共页面接口，**不需要管理员 JWT**；写入、更新、删除仍只能通过 `/admin/evaluations` 的鉴权接口完成。
+
+| 页面 | 公共接口 | 前端读取的字段 |
+| --- | --- | --- |
+| SIC 误差折线图 | `GET /seaice/error?year={year}&month={month}` | `{year}_BACC`、`{year}_per_BACC`、`{year}_RMSE`、`{year}_per_RMSE` |
+| SIC 误差箱线图 | `GET /seaice/errorBox?year={year}` | `withoutDA_withoutBC`、`withoutDA_withBC_RMSE`、`withDA_withoutBC_RMSE`、`MITgcm(with DA)withBC_RMSE` |
+| SIE 预测检验图 | `GET /seaice/predictionExamination/errorAnalysis?year={year}` | `RMSD`、`BAIS`、`VAR`、`CORRELATION`、`OBS_STD`、`PRE_STD` |
+
+初始化接口 `/seaice/initial/SICError`、`/seaice/initial/SICErrorBox`、`/seaice/initial/SIEErrorAnalysis` 只返回已具备完整固定指标集合的年月，避免公共页面跳转到无法展示的半成品数据。SIC 折线图按数值 `day` 排序，并将同一 `var_model` 的多日数组顺序聚合；因此后台更新会立即反映到公共接口，删除某一必需指标后该年月不再出现在初始化列表中。
 
 ## 通用响应与错误
 
@@ -154,6 +220,33 @@ ADMIN_JWT_SECRET
 ADMIN_JWT_EXPIRE_SECONDS=7200
 ADMIN_IMPORT_MAX_RECORDS=500
 ADMIN_IMPORT_MAX_FILE_SIZE=10MB
+NSIDC_PYTHON=python
+NSIDC_SCRIPT_PATH=scripts/nsidc_evaluation.py
+NSIDC_CACHE_DIR=<可写的持久缓存目录>
+NSIDC_TIMEOUT_SECONDS=900
+NSIDC_MAX_OUTPUT_BYTES=5242880
+NSIDC_DOWNLOAD_WORKERS=12
 ```
 
-先执行 `V001__create_admin_user.sql`（创建 `admin_users` 表），用 `scripts/generate-bcrypt-hash.ps1` 生成 BCrypt 哈希并创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。
+Python 依赖安装：
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r scripts\requirements-nsidc.txt
+```
+
+先在 PowerShell 中进入 MySQL 客户端：
+
+```powershell
+mysql -u root -p web
+```
+
+再在出现的 `mysql>` 提示符中执行迁移（`SOURCE` 不是 PowerShell 命令）：
+
+```sql
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V001__create_admin_user.sql;
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V002__add_evaluation_natural_key_indexes.sql;
+SOURCE C:/VScodework/TianXingProject/TianXing-Backend-2026/database/migrations/V003__add_evaluation_metric_provenance.sql;
+```
+
+然后在仓库根目录运行 `scripts/generate-bcrypt-hash.ps1`，用输出的哈希创建管理员。执行 `V002` 前必须确认其中的重复检查无结果。不要在 PowerShell 提示符直接输入 SQL。

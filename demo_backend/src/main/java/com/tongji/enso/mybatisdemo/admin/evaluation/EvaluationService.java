@@ -19,9 +19,10 @@ public class EvaluationService {
     private final Map<EvaluationCategory, EvaluationDataAdapter> adapters = new EnumMap<>(EvaluationCategory.class);
     private final EvaluationValidator validator;
     private final ObjectMapper objectMapper;
+    private final AdminEvaluationMapper mapper;
 
     public EvaluationService(List<EvaluationDataAdapter> adapterList, EvaluationValidator validator,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper, AdminEvaluationMapper mapper) {
         for (EvaluationDataAdapter adapter : adapterList) {
             adapters.put(adapter.category(), adapter);
         }
@@ -32,6 +33,7 @@ public class EvaluationService {
         }
         this.validator = validator;
         this.objectMapper = objectMapper;
+        this.mapper = mapper;
     }
 
     @Transactional(readOnly = true)
@@ -77,6 +79,10 @@ public class EvaluationService {
         if (adapter.update(record) != 1) {
             notFound();
         }
+        // A manual or foreign-source update is no longer reproducible from the
+        // previously recorded NSIDC inputs. The NSIDC publisher immediately
+        // writes fresh provenance again inside the same transaction.
+        mapper.deleteProvenance(category.name(), id);
         return toResponse(category, requireRecord(category, id));
     }
 
@@ -86,6 +92,7 @@ public class EvaluationService {
         if (adapter(category).delete(id) != 1) {
             notFound();
         }
+        mapper.deleteProvenance(category.name(), id);
         return toResponse(category, existing);
     }
 

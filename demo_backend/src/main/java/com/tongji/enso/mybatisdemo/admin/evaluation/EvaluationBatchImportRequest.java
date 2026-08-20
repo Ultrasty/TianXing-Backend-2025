@@ -6,6 +6,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class EvaluationBatchImportRequest {
     private String source;
+    private String dataKind;
     private String mode;
     private String category;
     private List<EvaluationRecordRequest> records;
@@ -16,6 +17,14 @@ public class EvaluationBatchImportRequest {
 
     public void setSource(String source) {
         this.source = source;
+    }
+
+    public String getDataKind() {
+        return dataKind;
+    }
+
+    public void setDataKind(String dataKind) {
+        this.dataKind = dataKind;
     }
 
     public String getMode() {

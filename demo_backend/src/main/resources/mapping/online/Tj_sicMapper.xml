@@ -13,11 +13,34 @@
     </select>
 
     <select id="findErrorByMonth" resultType="Tj_sic">
-        select * from tj_sic where year=#{year} and month=#{month} and var_model like concat('%', #{year}, '%')
+        select * from tj_sic
+        where year=#{year}
+          and month=#{month}
+          and var_model in (
+              concat(#{year}, '_BACC'),
+              concat(#{year}, '_per_BACC'),
+              concat(#{year}, '_RMSE'),
+              concat(#{year}, '_per_RMSE')
+          )
+        order by cast(day as decimal), id
     </select>
 
     <select id="findErrorBoxByYearAndModel" resultType="Tj_sic">
-        select * from tj_sic where year=#{year} and var_model like '%DA%'
+        select * from tj_sic
+        where year=#{year}
+          and var_model in (
+              'MITgcm(with DA)withBC_RMSE',
+              'withDA_withoutBC_RMSE',
+              'withoutDA_withBC_RMSE',
+              'withoutDA_withoutBC'
+          )
+        order by case var_model
+            when 'withoutDA_withoutBC' then 1
+            when 'withoutDA_withBC_RMSE' then 2
+            when 'withDA_withoutBC_RMSE' then 3
+            when 'MITgcm(with DA)withBC_RMSE' then 4
+            else 99
+        end, cast(month as decimal), cast(day as decimal), id
     </select>
 
     <select id="findErrorAvailableMonths" resultType="map">
@@ -33,7 +56,7 @@
             )
             THEN var_model
         END) = 4
-        ORDER BY CAST(year AS UNSIGNED), CAST(month AS UNSIGNED)
+        ORDER BY CAST(year AS DECIMAL), CAST(month AS DECIMAL)
     </select>
 
     <select id="findErrorBoxAvailableYears" resultType="string">
@@ -47,7 +70,7 @@
         )
         GROUP BY year
         HAVING COUNT(DISTINCT var_model) = 4
-        ORDER BY CAST(year AS UNSIGNED)
+        ORDER BY CAST(year AS DECIMAL)
     </select>
      
     
@@ -59,23 +82,23 @@
     <select id="findDistinctMonthsByYear" resultType="string">
         SELECT DISTINCT month FROM tj_sic 
         WHERE year = #{year} 
-        ORDER BY CAST(month AS UNSIGNED)
+        ORDER BY CAST(month AS DECIMAL)
     </select>
     
     <select id="findDistinctDaysByYearAndMonth" resultType="string">
-        SELECT DISTINCT day FROM tj_sic 
+        SELECT DISTINCT day FROM tj_sic
         WHERE year = #{year} AND month = #{month}
-        ORDER BY CAST(day AS UNSIGNED)
+        ORDER BY CAST(day AS DECIMAL)
     </select>
-    
+
     <select id="findLatestDate" resultType="map">
-        SELECT year, month, day 
-        FROM tj_sic 
-        ORDER BY CAST(year AS UNSIGNED) DESC, 
-                 CAST(month AS UNSIGNED) DESC, 
-                 CAST(day AS UNSIGNED) DESC 
+        SELECT year, month, day
+        FROM tj_sic
+        ORDER BY CAST(year AS DECIMAL) DESC,
+                 CAST(month AS DECIMAL) DESC,
+                 CAST(day AS DECIMAL) DESC
         LIMIT 1
     </select>
-   
+
 
 </mapper>

@@ -3,7 +3,6 @@ package com.tongji.enso.mybatisdemo.admin.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tongji.enso.mybatisdemo.admin.dto.EcmwfImportRequest;
-import com.tongji.enso.mybatisdemo.admin.dto.EcmwfPreviewRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -100,121 +99,6 @@ public class EcmwfImportService {
                     // 临时文件删除失败不影响主流程
                 }
             }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> preview(EcmwfPreviewRequest request) {
-        validatePreview(request);
-        Path output = null;
-        try {
-            output = Files.createTempFile("tianxing-ecmwf-preview-", ".json");
-            List<String> command = buildPreviewCommand(request, output);
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.redirectErrorStream(true);
-            Path processLogFile = Files.createTempFile("tianxing-ecmwf-preview-", ".log");
-            processBuilder.redirectOutput(processLogFile.toFile());
-            Process process = processBuilder.start();
-
-            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                Files.deleteIfExists(processLogFile);
-                throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "ECMWF 预览数据下载/解析超时");
-            }
-            String processLog = new String(Files.readAllBytes(processLogFile), StandardCharsets.UTF_8);
-            Files.deleteIfExists(processLogFile);
-            if (process.exitValue() != 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                        "ECMWF 预览数据获取失败: " + truncate(processLog, 1500));
-            }
-
-            String json = new String(Files.readAllBytes(output), StandardCharsets.UTF_8);
-            return objectMapper.readValue(json, Map.class);
-        } catch (ResponseStatusException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ECMWF 预览获取失败: " + ex.getMessage(), ex);
-        } finally {
-            if (output != null) {
-                try {
-                    Files.deleteIfExists(output);
-                } catch (Exception ignored) {
-                    // 临时文件删除失败不影响主流程
-                }
-            }
-        }
-    }
-
-    private List<String> buildPreviewCommand(EcmwfPreviewRequest request, Path output) {
-        List<String> command = new ArrayList<String>();
-        command.add(resolvePythonExecutable());
-        command.add(resolveScriptPath());
-        command.add("--output");
-        command.add(output.toAbsolutePath().toString());
-        command.add("--preview");
-        command.add("--time");
-        command.add(String.valueOf(request.getTime() == null ? 0 : request.getTime()));
-        command.add("--step");
-        command.add(String.valueOf(request.getStep() == null ? 24 : request.getStep()));
-        command.add("--param");
-        command.add(request.getParam().trim());
-        command.add("--type");
-        command.add(defaultString(request.getForecastType(), "fc"));
-        command.add("--source");
-        command.add(defaultString(request.getProvider(), "ecmwf"));
-        command.add("--model");
-        command.add(defaultString(request.getModel(), "ifs"));
-        command.add("--reducer");
-        command.add(defaultString(request.getReducer(), "MEAN"));
-        command.add("--max-points");
-        command.add(String.valueOf(request.getMaxPoints() == null ? 200 : request.getMaxPoints()));
-
-        if (!isBlank(request.getDate())) {
-            command.add("--date");
-            command.add(request.getDate().trim());
-        }
-        if (!isBlank(request.getLevtype())) {
-            command.add("--levtype");
-            command.add(request.getLevtype().trim());
-        }
-        if (request.getLevelist() != null) {
-            command.add("--levelist");
-            command.add(String.valueOf(request.getLevelist()));
-        }
-        if (!isBlank(request.getStream())) {
-            command.add("--stream");
-            command.add(request.getStream().trim());
-        }
-        return command;
-    }
-
-    private void validatePreview(EcmwfPreviewRequest request) {
-        if (request == null) {
-            throw badRequest("请求体不能为空");
-        }
-        if (isBlank(request.getParam())) {
-            throw badRequest("param 不能为空，例如 2t / msl / t / u / v");
-        }
-        int time = request.getTime() == null ? 0 : request.getTime();
-        if (!VALID_TIMES.contains(time)) {
-            throw badRequest("time 仅支持 0 / 6 / 12 / 18 UTC");
-        }
-        int step = request.getStep() == null ? 24 : request.getStep();
-        if (step < 0 || step > 360) {
-            throw badRequest("step 必须在 0-360 小时之间");
-        }
-        String source = defaultString(request.getProvider(), "ecmwf");
-        if (!VALID_SOURCES.contains(source)) {
-            throw badRequest("provider 仅支持 ecmwf / aws / google / azure");
-        }
-        String model = defaultString(request.getModel(), "ifs");
-        if (!VALID_MODELS.contains(model)) {
-            throw badRequest("model 仅支持 ifs / aifs-single / aifs-ens");
-        }
-        String type = defaultString(request.getForecastType(), "fc");
-        if (!VALID_TYPES.contains(type)) {
-            throw badRequest("forecastType 仅支持 fc / pf / em / es / ep");
         }
     }
 

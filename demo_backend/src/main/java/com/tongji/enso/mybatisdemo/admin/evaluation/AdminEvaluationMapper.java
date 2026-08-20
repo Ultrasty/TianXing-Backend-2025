@@ -153,4 +153,34 @@ public interface AdminEvaluationMapper {
 
     @Delete("DELETE FROM tj_sie WHERE id=#{id} AND " + SIE_PREDICATE)
     int deleteSie(@Param("id") long id);
+
+    @Select("SELECT id, year, month, day, var_model AS varModel, data FROM tj_sic " +
+            "WHERE year=#{year} AND CAST(month AS DECIMAL)=CAST(#{month} AS DECIMAL) " +
+            "AND CAST(day AS DECIMAL)=CAST(#{day} AS DECIMAL) AND var_model='SIC_Ice-BCNet' LIMIT 1")
+    EvaluationPersistenceRecord findSicPrediction(@Param("year") String year, @Param("month") String month,
+                                                   @Param("day") String day);
+
+    @Select("SELECT lat, lon FROM info_sic_latlon WHERE id=1")
+    SicGridRecord getSicGrid();
+
+    @Select("SELECT id, year, month, var_model AS varModel, data FROM tj_sie " +
+            "WHERE year=#{year} AND var_model='prediction_IceTFT' ORDER BY CAST(month AS DECIMAL)")
+    List<EvaluationPersistenceRecord> listSiePredictions(@Param("year") String year);
+
+    @Select("SELECT id FROM evaluation_metric_provenance WHERE category=#{category} AND record_id=#{recordId}")
+    Long findProvenanceId(@Param("category") String category, @Param("recordId") long recordId);
+
+    @Insert("INSERT INTO evaluation_metric_provenance(category,record_id,source,prediction_model," +
+            "observation_dataset,observation_version,details) VALUES(#{category},#{recordId},#{source}," +
+            "#{predictionModel},#{observationDataset},#{observationVersion},#{details})")
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    int insertProvenance(EvaluationMetricProvenance provenance);
+
+    @Update("UPDATE evaluation_metric_provenance SET source=#{source},prediction_model=#{predictionModel}," +
+            "observation_dataset=#{observationDataset},observation_version=#{observationVersion}," +
+            "details=#{details},updated_at=CURRENT_TIMESTAMP WHERE id=#{id}")
+    int updateProvenance(EvaluationMetricProvenance provenance);
+
+    @Delete("DELETE FROM evaluation_metric_provenance WHERE category=#{category} AND record_id=#{recordId}")
+    int deleteProvenance(@Param("category") String category, @Param("recordId") long recordId);
 }

@@ -29,6 +29,10 @@ public class Tj_sieService {
         return tj_sieMapper.findByYear(year);
     }
 
+    public List<Tj_sie> findErrorAnalysisByYear(String year) {
+        return tj_sieMapper.findErrorAnalysisByYear(year);
+    }
+
     public List<String> findErrorAnalysisAvailableYears() {
         return tj_sieMapper.findErrorAnalysisAvailableYears();
     }
