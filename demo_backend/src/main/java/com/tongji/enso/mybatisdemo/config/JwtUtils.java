@@ -4,78 +4,89 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
+import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 @Component
 public class JwtUtils {
+    private static final String ISSUER = "tianxing-admin";
 
-    // 默认密钥 (必须 >= 64 字节以满足 HS512 算法 512 位安全要求)
-    private static final String SECRET = "tianxing_meteo_secret_key_2026_tongji_university_admin_secure_jwt_token_key_512bits";
-    // 默认 Token 有效期：24 小时 (ms)
-    private static final long EXPIRATION = 24 * 60 * 60 * 1000L;
+    private final SecretKey signingKey;
+    private final long expireSeconds;
 
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+    public JwtUtils(@Value("${admin.jwt.secret:}") String configuredSecret,
+                    @Value("${admin.jwt.expire-seconds:7200}") long expireSeconds,
+                    Environment environment) {
+        if (expireSeconds <= 0) {
+            throw new IllegalStateException("admin.jwt.expire-seconds must be positive");
+        }
+        this.signingKey = createSigningKey(configuredSecret, environment);
+        this.expireSeconds = expireSeconds;
     }
 
-    /**
-     * 从数据声明生成令牌
-     */
     public String createToken(String username) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("username", username);
-        return createToken(claims);
-    }
-
-    private String createToken(Map<String, Object> claims) {
-        Date now = new Date();
-        Date expirationDate = new Date(now.getTime() + EXPIRATION);
+        Instant now = Instant.now();
         return Jwts.builder()
-                .setClaims(claims)
-                .setIssuedAt(now)
-                .setExpiration(expirationDate)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .setIssuer(ISSUER)
+                .setSubject(username)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(now.plusSeconds(expireSeconds)))
+                .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /**
-     * 从令牌中获取数据声明
-     */
     public Claims parseToken(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .requireIssuer(ISSUER)
+                .setSigningKey(signingKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
-    /**
-     * 从令牌中获取用户名
-     */
     public String getUsernameFromToken(String token) {
         try {
-            Claims claims = parseToken(token);
-            return (String) claims.get("username");
-        } catch (Exception e) {
+            return parseToken(token).getSubject();
+        } catch (RuntimeException exception) {
             return null;
         }
     }
 
-    /**
-     * 验证令牌是否有效
-     */
     public boolean validateToken(String token) {
         try {
             Claims claims = parseToken(token);
-            return !claims.getExpiration().before(new Date());
-        } catch (Exception e) {
+            return claims.getExpiration() != null && claims.getExpiration().after(new Date());
+        } catch (RuntimeException exception) {
             return false;
         }
+    }
+
+    public long getExpireSeconds() {
+        return expireSeconds;
+    }
+
+    private SecretKey createSigningKey(String configuredSecret, Environment environment) {
+        if (configuredSecret == null || configuredSecret.trim().isEmpty()) {
+            if (environment.acceptsProfiles(Profiles.of("prod", "production"))) {
+                throw new IllegalStateException("ADMIN_JWT_SECRET is required in production profiles");
+            }
+            byte[] randomSecret = new byte[32];
+            new SecureRandom().nextBytes(randomSecret);
+            return Keys.hmacShaKeyFor(randomSecret);
+        }
+
+        byte[] bytes = configuredSecret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IllegalStateException("ADMIN_JWT_SECRET must contain at least 32 UTF-8 bytes");
+        }
+        return Keys.hmacShaKeyFor(bytes);
     }
 }

@@ -108,13 +108,14 @@ Content-Type: application/json
 < ../../examples/manual-evaluation-import.json
 --EvaluationBoundary--
 
-### ECMWF 规范化 JSON 批量导入
+### 上游完成观测匹配和指标计算后的 ECMWF 评估结果入库
 POST {{baseUrl}}/admin/evaluations/import/batch
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
   "source": "ECMWF",
+  "dataKind": "EVALUATION_METRIC",
   "mode": "UPSERT",
   "category": "SIE",
   "records": [

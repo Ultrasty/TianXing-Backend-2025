@@ -79,6 +79,10 @@ public class EvaluationImportService {
                 !"ECMWF".equals(request.getSource().trim().toUpperCase(Locale.ROOT))) {
             invalidFile("规范化批量接口的source必须是 ECMWF");
         }
+        if (request.getDataKind() == null ||
+                !"EVALUATION_METRIC".equals(request.getDataKind().trim().toUpperCase(Locale.ROOT))) {
+            invalidFile("规范化批量接口的dataKind必须是 EVALUATION_METRIC");
+        }
         return doImport(request);
     }
 
