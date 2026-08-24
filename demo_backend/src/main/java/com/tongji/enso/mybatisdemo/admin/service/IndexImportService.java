@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -96,8 +98,8 @@ public class IndexImportService {
             InputStream stdout = process.getInputStream();
             InputStream stderr = process.getErrorStream();
 
-            String output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
-            String errOutput = new String(stderr.readAllBytes(), StandardCharsets.UTF_8);
+            String output = readFully(stdout);
+            String errOutput = readFully(stderr);
 
             int exitCode = process.waitFor();
             if (exitCode != 0) {
@@ -138,6 +140,16 @@ public class IndexImportService {
                 process.destroyForcibly();
             }
         }
+    }
+
+    private static String readFully(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] data = new byte[4096];
+        int read;
+        while ((read = inputStream.read(data)) != -1) {
+            buffer.write(data, 0, read);
+        }
+        return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
     }
 
     static final double MAX_ABS_INDEX_VALUE = 5.0;
