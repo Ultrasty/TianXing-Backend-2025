@@ -151,11 +151,11 @@ public class EcmwfImportService {
     }
 
     private String resolveScriptPath(String configuredPath) {
-        Path path = Path.of(configuredPath);
+        Path path = Paths.get(configuredPath);
         if (Files.exists(path)) {
             return path.toAbsolutePath().toString();
         }
-        Path demoBackendPath = Path.of("demo_backend", configuredPath);
+        Path demoBackendPath = Paths.get("demo_backend", configuredPath);
         if (Files.exists(demoBackendPath)) {
             return demoBackendPath.toAbsolutePath().toString();
         }

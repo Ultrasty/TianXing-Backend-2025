@@ -95,22 +95,22 @@ public class EnsoController {
         // =========================================================
 
         List<Double> ascData =
-                ascJson == null || ascJson.isBlank()
+                isBlank(ascJson)
                         ? new ArrayList<>()
                         : gson.fromJson(ascJson, listType);
 
         List<Double> gtcData =
-                gtcJson == null || gtcJson.isBlank()
+                isBlank(gtcJson)
                         ? new ArrayList<>()
                         : gson.fromJson(gtcJson, listType);
 
         List<Double> mcData =
-                mcJson == null || mcJson.isBlank()
+                isBlank(mcJson)
                         ? new ArrayList<>()
                         : gson.fromJson(mcJson, listType);
 
         List<Double> meanData =
-                meanJson == null || meanJson.isBlank()
+                isBlank(meanJson)
                         ? new ArrayList<>()
                         : gson.fromJson(meanJson, listType);
 
@@ -1509,5 +1509,9 @@ public class EnsoController {
         result.put("start", earliestYearMonth);
         result.put("end", latestYearMonth);
         return result;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }
