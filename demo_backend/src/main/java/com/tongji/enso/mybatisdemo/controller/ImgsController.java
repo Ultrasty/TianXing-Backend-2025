@@ -21,6 +21,7 @@ public class ImgsController {
     /**
      * 获取指定 年、月、日 的图片路径 WEA_MSLP
      * eg. http://localhost:8080/imgs/WEA_MSLP/getImgsPath?year=2019&month=1&day=1
+     * 
      * @param year
      * @param month
      * @param day
@@ -45,8 +46,7 @@ public class ImgsController {
         int dayIncrement = 0; // 用于处理跨天情况
         int daysInMonth = 30; // 假设每月固定为30天
         List<String> titlesList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             if (hour >= 24) {
                 hour -= 24;
                 dayIncrement += 1;
@@ -64,8 +64,7 @@ public class ImgsController {
         }
 
         List<String> testsList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             testsList.add("待定待定");
         }
 
@@ -79,6 +78,7 @@ public class ImgsController {
     /**
      * 获取指定 年、月、日 的图片路径 WEA_T2M
      * eg. http://localhost:8080/imgs/WEA_T2M/getImgsPath?year=2019&month=1&day=1
+     * 
      * @param year
      * @param month
      * @param day
@@ -103,8 +103,7 @@ public class ImgsController {
         int dayIncrement = 0; // 用于处理跨天情况
         int daysInMonth = 30; // 假设每月固定为30天
         List<String> titlesList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             if (hour >= 24) {
                 hour -= 24;
                 dayIncrement += 1;
@@ -118,12 +117,11 @@ public class ImgsController {
             }
 
             titlesList.add(String.format("%s年%s月%s日%d时2米气温预测结果", year, newMonth, newDay, hour));
-            hour+= 6;
+            hour += 6;
         }
 
         List<String> testsList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             testsList.add("全球整体气温偏高，澳大利亚出现异常高温");
         }
 
@@ -157,8 +155,7 @@ public class ImgsController {
         int dayIncrement = 0; // 用于处理跨天情况
         int daysInMonth = 30; // 假设每月固定为30天
         List<String> titlesList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             if (hour >= 24) {
                 hour -= 24;
                 dayIncrement += 1;
@@ -172,12 +169,11 @@ public class ImgsController {
             }
 
             titlesList.add(String.format("%s年%s月%s日%d时地表降水预测结果", year, newMonth, newDay, hour));
-            hour+= 6;
+            hour += 6;
         }
 
         List<String> testsList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             testsList.add("赤道地区与北半球降水较多，南半球降水较少");
         }
 
@@ -212,8 +208,7 @@ public class ImgsController {
         int dayIncrement = 0; // 用于处理跨天情况
         int daysInMonth = 30; // 假设每月固定为30天
         List<String> titlesList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             if (hour >= 24) {
                 hour -= 24;
                 dayIncrement += 1;
@@ -227,12 +222,11 @@ public class ImgsController {
             }
 
             titlesList.add(String.format("%s年%s月%s日%d时待定待定", year, newMonth, newDay, hour));
-            hour+= 6;
+            hour += 6;
         }
 
         List<String> testsList = new ArrayList<>();
-        for (int i = 0; i < imgPaths.size(); i++)
-        {
+        for (int i = 0; i < imgPaths.size(); i++) {
             testsList.add("待定待定");
         }
 
@@ -249,8 +243,7 @@ public class ImgsController {
      */
     @GetMapping("/WEA_MSLP/getInitData")
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 WEA_MSLP", value = "初始化：返回可选年、月、日范围 WEA_MSLP")
-    public Map<String, Object> getMSLPInitMonth()
-    {
+    public Map<String, Object> getMSLPInitMonth() {
         List<Imgs> imgsData = imgsMapper.findImgsInfoByType("WEA_MSLP");
 
         String earliestDate = null;
@@ -277,8 +270,7 @@ public class ImgsController {
      */
     @GetMapping("/WEA_T2M/getInitData")
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 WEA_T2M", value = "初始化：返回可选年、月、日范围 WEA_T2M")
-    public Map<String, Object> getT2MInitMonth()
-    {
+    public Map<String, Object> getT2MInitMonth() {
         List<Imgs> imgsData = imgsMapper.findImgsInfoByType("WEA_T2M");
 
         String earliestDate = null;
@@ -306,8 +298,7 @@ public class ImgsController {
      */
     @GetMapping("/WEA_TP/getInitData")
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 WEA_TP", value = "初始化：返回可选年、月、日范围 WEA_TP")
-    public Map<String, Object> getTPInitMonth()
-    {
+    public Map<String, Object> getTPInitMonth() {
         List<Imgs> imgsData = imgsMapper.findImgsInfoByType("WEA_TP");
 
         String earliestDate = null;
@@ -335,8 +326,7 @@ public class ImgsController {
      */
     @GetMapping("/WEA_U10/getInitData")
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 WEA_U10", value = "初始化：返回可选年、月、日范围 WEA_U10")
-    public Map<String, Object> getU10InitMonth()
-    {
+    public Map<String, Object> getU10InitMonth() {
         List<Imgs> imgsData = imgsMapper.findImgsInfoByType("WEA_U10");
 
         String earliestDate = null;
@@ -360,35 +350,28 @@ public class ImgsController {
 
     @Autowired
     private ImgsMapperEnso ImgsMapperEnso;
+
     /**
      * 把 imgs 数据转换成 yyyy-MM 月份集合。
      */
     private Set<String> toImgMonthSet(
-            List<Imgs> data
-    ) {
+            List<Imgs> data) {
 
-        Set<String> months =
-                new HashSet<>();
+        Set<String> months = new HashSet<>();
 
         if (data == null) {
             return months;
         }
 
-
         for (Imgs item : data) {
 
             try {
 
-                int year =
-                        Integer.parseInt(
-                                item.getYear()
-                        );
+                int year = Integer.parseInt(
+                        item.getYear());
 
-                int month =
-                        Integer.parseInt(
-                                item.getMonth()
-                        );
-
+                int month = Integer.parseInt(
+                        item.getMonth());
 
                 if (month >= 1 && month <= 12) {
 
@@ -396,9 +379,7 @@ public class ImgsController {
                             String.format(
                                     "%04d-%02d",
                                     year,
-                                    month
-                            )
-                    );
+                                    month));
                 }
 
             } catch (NumberFormatException ignored) {
@@ -407,9 +388,9 @@ public class ImgsController {
             }
         }
 
-
         return months;
     }
+
     /**
      * 初始化：返回可选年、月、日范围 WEA_U10
      * eg. http://localhost:8080/imgs/predictionResult/ssta/getInitData
@@ -418,65 +399,46 @@ public class ImgsController {
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 Enso_ssta", value = "初始化：返回可选年、月、日范围 Enso")
     public Map<String, Object> getSSTAInitMonth() {
 
-        List<Imgs> ascData =
-                ImgsMapperEnso.findImgsInfoALL("ENSO_ASC");
+        List<Imgs> ascData = ImgsMapperEnso.findImgsInfoALL("ENSO_ASC");
 
-        List<Imgs> mcData =
-                ImgsMapperEnso.findImgsInfoALL("ENSO_MC");
+        List<Imgs> mcData = ImgsMapperEnso.findImgsInfoALL("ENSO_MC");
 
-        List<Imgs> gtcData =
-                ImgsMapperEnso.findImgsInfoALL("ENSO_GTC");
+        List<Imgs> gtcData = ImgsMapperEnso.findImgsInfoALL("ENSO_GTC");
 
-
-        Set<String> availableMonths =
-                new HashSet<>();
-
+        Set<String> availableMonths = new HashSet<>();
 
         // 求并集
         availableMonths.addAll(
-                toImgMonthSet(ascData)
-        );
+                toImgMonthSet(ascData));
 
         availableMonths.addAll(
-                toImgMonthSet(mcData)
-        );
+                toImgMonthSet(mcData));
 
         availableMonths.addAll(
-                toImgMonthSet(gtcData)
-        );
+                toImgMonthSet(gtcData));
 
-
-        List<String> sortedMonths =
-                new ArrayList<>(availableMonths);
+        List<String> sortedMonths = new ArrayList<>(availableMonths);
 
         Collections.sort(sortedMonths);
 
-
-        Map<String, Object> result =
-                new HashMap<>();
-
+        Map<String, Object> result = new HashMap<>();
 
         // 真正可用月份
         result.put(
                 "availableMonths",
-                sortedMonths
-        );
-
+                sortedMonths);
 
         // 保留 start / end，兼容现在的前端
         if (!sortedMonths.isEmpty()) {
 
             result.put(
                     "start",
-                    sortedMonths.get(0)
-            );
+                    sortedMonths.get(0));
 
             result.put(
                     "end",
                     sortedMonths.get(
-                            sortedMonths.size() - 1
-                    )
-            );
+                            sortedMonths.size() - 1));
 
         } else {
 
@@ -484,179 +446,61 @@ public class ImgsController {
             result.put("end", null);
         }
 
-
         return result;
     }
+
     /**
      * 获取指定 年、月、index的图片路径
      * eg. http://localhost:9090/imgs/WEA_U10/getImgsPath?year=2019&month=1&day=1
      */
     @GetMapping("/predictionResult/ssta")
-    public Map<String, Object> getSstaData(
-            String year,
-            String month
-    ) {
-
-        List<Imgs> ascData =
-                ImgsMapperEnso.findImgsInfoByDayType(
-                        year,
-                        month,
-                        "ENSO_ASC"
-                );
-
-        List<Imgs> mcData =
-                ImgsMapperEnso.findImgsInfoByDayType(
-                        year,
-                        month,
-                        "ENSO_MC"
-                );
-
-        List<Imgs> gtcData =
-                ImgsMapperEnso.findImgsInfoByDayType(
-                        year,
-                        month,
-                        "ENSO_GTC"
-                );
-
-
-        List<String> imgPaths =
-                new ArrayList<>();
-
-        List<String> titles =
-                new ArrayList<>();
-
-
-        // ========================================================
-        // ASC
-        // ========================================================
-
-        if (
-                ascData != null
-                        && !ascData.isEmpty()
-                        && ascData.get(0).getData() != null
-                        && !ascData.get(0).getData().isBlank()
-        ) {
-
-            String[] paths =
-                    ascData.get(0)
-                            .getData()
-                            .split(",");
-
-
-            for (String path : paths) {
-
-                String trimmedPath =
-                        path.trim();
-
-                if (!trimmedPath.isEmpty()) {
-
-                    imgPaths.add(
-                            trimmedPath
-                    );
-
-                    titles.add(
-                            year
-                                    + "年"
-                                    + month
-                                    + "月 ENSO_ASC 预测结果"
-                    );
-                }
+    public Map<String, Object> getSstaData(String year, String month, String day) {
+        List<Imgs> imgsData1 = ImgsMapperEnso.findImgsInfoByDayType(year, month, "ENSO_ASC");
+        List<Imgs> imgsData2 = ImgsMapperEnso.findImgsInfoByDayType(year, month, "ENSO_MC");
+        List<Imgs> imgsData3 = ImgsMapperEnso.findImgsInfoByDayType(year, month, "ENSO_GTC");
+        Map<String, Object> result = new HashMap<>();
+        int length1 = 0;
+        int length2 = 0;
+        int length3 = 0;
+        // 将 data 字段从 JSON 字符串转换为 List<String>
+        List<String> imgPaths = new ArrayList<>();
+        List<String> imgPaths1 = new ArrayList<>();
+        List<String> imgPaths2 = new ArrayList<>();
+        List<String> imgPaths3 = new ArrayList<>();
+        String title1 = year + "年" + month + "月 ENSO_ASC 预测结果";
+        String title2 = year + "年" + month + "月 ENSO_MC 预测结果";
+        String title3 = year + "年" + month + "月 ENSO_GTC 预测结果";
+        List<String> titles = new ArrayList<>();
+        if (!imgsData1.isEmpty()) {
+            String imgSrcData1 = imgsData1.get(0).getData();
+            imgPaths1 = Arrays.asList(imgSrcData1.split(","));
+            length1 = imgPaths1.size();
+            for (int i = 0; i < length1; i++) {
+                imgPaths.add(imgPaths1.get(i));
+                titles.add(title1);
+            }
+        }
+        if (!imgsData2.isEmpty()) {
+            String imgSrcData2 = imgsData2.get(0).getData();
+            imgPaths2 = Arrays.asList(imgSrcData2.split(","));
+            length2 = imgPaths2.size();
+            for (int i = 0; i < length2; i++) {
+                imgPaths.add(imgPaths2.get(i));
+                titles.add(title2);
+            }
+        }
+        if (!imgsData3.isEmpty()) {
+            String imgSrcData3 = imgsData3.get(0).getData();
+            imgPaths3 = Arrays.asList(imgSrcData3.split(","));
+            length3 = imgPaths3.size();
+            for (int i = 0; i < length3; i++) {
+                imgPaths.add(imgPaths3.get(i));
+                titles.add(title3);
             }
         }
 
-
-        // ========================================================
-        // MC
-        // ========================================================
-
-        if (
-                mcData != null
-                        && !mcData.isEmpty()
-                        && mcData.get(0).getData() != null
-                        && !mcData.get(0).getData().isBlank()
-        ) {
-
-            String[] paths =
-                    mcData.get(0)
-                            .getData()
-                            .split(",");
-
-
-            for (String path : paths) {
-
-                String trimmedPath =
-                        path.trim();
-
-                if (!trimmedPath.isEmpty()) {
-
-                    imgPaths.add(
-                            trimmedPath
-                    );
-
-                    titles.add(
-                            year
-                                    + "年"
-                                    + month
-                                    + "月 ENSO_MC 预测结果"
-                    );
-                }
-            }
-        }
-
-
-        // ========================================================
-        // GTC
-        // ========================================================
-
-        if (
-                gtcData != null
-                        && !gtcData.isEmpty()
-                        && gtcData.get(0).getData() != null
-                        && !gtcData.get(0).getData().isBlank()
-        ) {
-
-            String[] paths =
-                    gtcData.get(0)
-                            .getData()
-                            .split(",");
-
-
-            for (String path : paths) {
-
-                String trimmedPath =
-                        path.trim();
-
-                if (!trimmedPath.isEmpty()) {
-
-                    imgPaths.add(
-                            trimmedPath
-                    );
-
-                    titles.add(
-                            year
-                                    + "年"
-                                    + month
-                                    + "月 ENSO_GTC 预测结果"
-                    );
-                }
-            }
-        }
-
-
-        Map<String, Object> result =
-                new HashMap<>();
-
-        result.put(
-                "data",
-                imgPaths
-        );
-
-        result.put(
-                "titles",
-                titles
-        );
-
-
+        result.put("data", imgPaths);
+        result.put("titles", titles);
         return result;
     }
 

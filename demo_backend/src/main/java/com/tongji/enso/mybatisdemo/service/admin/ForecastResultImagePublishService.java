@@ -105,6 +105,36 @@ public class ForecastResultImagePublishService {
         deleteStoredFiles(key);
     }
 
+    public DeletedSingleImage deletePublishedImage(String year, String month, String day, String type, String imagePath) {
+        ImageKey key = normalizeKey(year, month, day, type);
+        String normalizedImagePath = normalizeImagePath(imagePath);
+        List<Imgs> records = requiresDay(key.type)
+                ? imgsMapper.findImgsInfoByDayType(key.year, key.month, key.day, key.type)
+                : findMonthRecords(key);
+        if (records.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到对应的预报结果图记录");
+        }
+
+        for (Imgs record : records) {
+            List<String> paths = splitPaths(record.getData());
+            int index = findPathIndex(paths, normalizedImagePath);
+            if (index < 0) {
+                continue;
+            }
+
+            String deletedPath = paths.remove(index);
+            if (paths.isEmpty()) {
+                imgsMapper.deleteById(record.getId());
+            } else {
+                imgsMapper.updateDataById(record.getId(), String.join(",", paths));
+            }
+            deleteStoredFile(deletedPath);
+            return new DeletedSingleImage(record.getId(), key.year, key.month, key.day, key.type, deletedPath, paths);
+        }
+
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到当前展示的预报结果图");
+    }
+
     public List<ImageTypeOption> listSupportedTypes() {
         List<ImageTypeOption> options = new ArrayList<>();
         options.add(new ImageTypeOption("ENSO_ASC", "ENSO ASC", "月", false, "ENSO 模态预测结果图"));
@@ -132,9 +162,67 @@ public class ForecastResultImagePublishService {
     }
 
     private PublishedImage persistRecord(ImageKey key, List<String> paths) {
-        Imgs imgs = new Imgs(0, key.year, key.month, key.day, key.type, String.join(",", paths));
+        int id = imgsMapper.findMaxId() + 1;
+        Imgs imgs = new Imgs(id, key.year, key.month, dayForStorage(key), key.type, String.join(",", paths));
         imgsMapper.insertImgs(imgs);
         return new PublishedImage(imgs.getId(), key.year, key.month, key.day, key.type, paths, buildVerifyPath(key));
+    }
+
+    private String dayForStorage(ImageKey key) {
+        return isBlank(key.day) ? "1" : key.day;
+    }
+
+    private List<Imgs> findMonthRecords(ImageKey key) {
+        List<Imgs> all = imgsMapper.findImgsInfoByType(key.type);
+        List<Imgs> matched = new ArrayList<>();
+        for (Imgs record : all) {
+            if (key.year.equals(record.getYear()) && key.month.equals(record.getMonth())) {
+                matched.add(record);
+            }
+        }
+        return matched;
+    }
+
+    private List<String> splitPaths(String data) {
+        List<String> paths = new ArrayList<>();
+        if (isBlank(data)) {
+            return paths;
+        }
+        for (String value : data.split(",")) {
+            if (!isBlank(value)) {
+                paths.add(value.trim());
+            }
+        }
+        return paths;
+    }
+
+    private int findPathIndex(List<String> paths, String imagePath) {
+        for (int i = 0; i < paths.size(); i++) {
+            if (normalizeImagePath(paths.get(i)).equals(imagePath)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private String normalizeImagePath(String imagePath) {
+        if (isBlank(imagePath)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择要删除的图片");
+        }
+        String normalized = imagePath.trim();
+        try {
+            URL url = new URL(normalized);
+            normalized = url.getPath();
+        } catch (Exception ignored) {
+        }
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+        while (normalized.contains("//")) {
+            normalized = normalized.replace("//", "/");
+        }
+        return normalized;
     }
 
     private String buildVerifyPath(ImageKey key) {
@@ -384,6 +472,25 @@ public class ForecastResultImagePublishService {
         }
     }
 
+    private void deleteStoredFile(String publicImagePath) {
+        Path root = uploadRootPath();
+        String normalizedPrefix = normalizePublicPrefix(publicPrefix);
+        String normalizedPath = normalizeImagePath(publicImagePath);
+        if (!normalizedPath.startsWith(normalizedPrefix + "/")) {
+            return;
+        }
+        String relative = normalizedPath.substring(normalizedPrefix.length() + 1);
+        Path target = root.resolve(relative).normalize();
+        if (!target.startsWith(root)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图片路径非法");
+        }
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "删除图片文件失败", ex);
+        }
+    }
+
     private String publicPath(ImageKey key, String fileName) {
         StringBuilder builder = new StringBuilder();
         builder.append(normalizePublicPrefix(publicPrefix))
@@ -447,6 +554,55 @@ public class ForecastResultImagePublishService {
             this.month = month;
             this.day = day;
             this.type = type;
+        }
+    }
+
+    public static class DeletedSingleImage {
+        private final int id;
+        private final String year;
+        private final String month;
+        private final String day;
+        private final String type;
+        private final String deletedPath;
+        private final List<String> remainingPaths;
+
+        private DeletedSingleImage(int id, String year, String month, String day, String type,
+                                   String deletedPath, List<String> remainingPaths) {
+            this.id = id;
+            this.year = year;
+            this.month = month;
+            this.day = day;
+            this.type = type;
+            this.deletedPath = deletedPath;
+            this.remainingPaths = remainingPaths;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getYear() {
+            return year;
+        }
+
+        public String getMonth() {
+            return month;
+        }
+
+        public String getDay() {
+            return day;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public String getDeletedPath() {
+            return deletedPath;
+        }
+
+        public List<String> getRemainingPaths() {
+            return remainingPaths;
         }
     }
 
