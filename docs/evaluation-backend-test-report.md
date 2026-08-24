@@ -2,7 +2,7 @@
 
 验证日期：2026-08-20。
 
-复现命令、逐项验收步骤和预期结果见 `docs/evaluation-testing-guide.md`。本报告记录已经完成的验证结果，不代替交付机器上的本地 MySQL 验收。
+复现命令、逐项验收步骤和预期结果见 `evaluation-admin-demo-and-delivery.md`。本报告记录已经完成的验证结果，不代替交付机器上的本地 MySQL 验收。
 
 ## 自动化结果
 

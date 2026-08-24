@@ -125,11 +125,21 @@ public class EcmwfImportRequest {
         this.source = source;
     }
 
+    private Boolean overwrite;
+
     public String getModel() {
         return model;
     }
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public Boolean getOverwrite() {
+        return overwrite;
+    }
+
+    public void setOverwrite(Boolean overwrite) {
+        this.overwrite = overwrite;
     }
 }
