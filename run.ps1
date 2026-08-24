@@ -1,4 +1,4 @@
-# 一键启动脚本：自动读取 .vscode/launch.json 环境变量并运行后端服务
+﻿# 一键启动脚本：自动读取 .vscode/launch.json 环境变量并运行后端服务
 
 $launchJsonPath = "$PSScriptRoot\.vscode\launch.json"
 

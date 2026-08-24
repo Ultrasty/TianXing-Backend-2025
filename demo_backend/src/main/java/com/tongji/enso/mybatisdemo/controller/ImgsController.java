@@ -361,31 +361,130 @@ public class ImgsController {
     @Autowired
     private ImgsMapperEnso ImgsMapperEnso;
     /**
+     * 把 imgs 数据转换成 yyyy-MM 月份集合。
+     */
+    private Set<String> toImgMonthSet(
+            List<Imgs> data
+    ) {
+
+        Set<String> months =
+                new HashSet<>();
+
+        if (data == null) {
+            return months;
+        }
+
+
+        for (Imgs item : data) {
+
+            try {
+
+                int year =
+                        Integer.parseInt(
+                                item.getYear()
+                        );
+
+                int month =
+                        Integer.parseInt(
+                                item.getMonth()
+                        );
+
+
+                if (month >= 1 && month <= 12) {
+
+                    months.add(
+                            String.format(
+                                    "%04d-%02d",
+                                    year,
+                                    month
+                            )
+                    );
+                }
+
+            } catch (NumberFormatException ignored) {
+
+                // 非法年月直接跳过
+            }
+        }
+
+
+        return months;
+    }
+    /**
      * 初始化：返回可选年、月、日范围 WEA_U10
      * eg. http://localhost:8080/imgs/predictionResult/ssta/getInitData
      */
     @GetMapping("/predictionResult/ssta/getInitData")
     @ApiOperation(notes = "初始化：返回可选年、月、日范围 Enso_ssta", value = "初始化：返回可选年、月、日范围 Enso")
-    public Map<String, Object> getSSTAInitMonth()
-    {
-        List<Imgs> imgsData = ImgsMapperEnso.findImgsInfoALL("ENSO_ASC");
+    public Map<String, Object> getSSTAInitMonth() {
 
-        String earliestDate = null;
-        String latestDate = null;
+        List<Imgs> ascData =
+                ImgsMapperEnso.findImgsInfoALL("ENSO_ASC");
 
-        for (Imgs img : imgsData) {
-            String date = img.getYear() + "-" + img.getMonth();
-            if (earliestDate == null || date.compareTo(earliestDate) < 0) {
-                earliestDate = date;
-            }
-            if (latestDate == null || date.compareTo(latestDate) > 0) {
-                latestDate = date;
-            }
+        List<Imgs> mcData =
+                ImgsMapperEnso.findImgsInfoALL("ENSO_MC");
+
+        List<Imgs> gtcData =
+                ImgsMapperEnso.findImgsInfoALL("ENSO_GTC");
+
+
+        Set<String> availableMonths =
+                new HashSet<>();
+
+
+        // 求并集
+        availableMonths.addAll(
+                toImgMonthSet(ascData)
+        );
+
+        availableMonths.addAll(
+                toImgMonthSet(mcData)
+        );
+
+        availableMonths.addAll(
+                toImgMonthSet(gtcData)
+        );
+
+
+        List<String> sortedMonths =
+                new ArrayList<>(availableMonths);
+
+        Collections.sort(sortedMonths);
+
+
+        Map<String, Object> result =
+                new HashMap<>();
+
+
+        // 真正可用月份
+        result.put(
+                "availableMonths",
+                sortedMonths
+        );
+
+
+        // 保留 start / end，兼容现在的前端
+        if (!sortedMonths.isEmpty()) {
+
+            result.put(
+                    "start",
+                    sortedMonths.get(0)
+            );
+
+            result.put(
+                    "end",
+                    sortedMonths.get(
+                            sortedMonths.size() - 1
+                    )
+            );
+
+        } else {
+
+            result.put("start", null);
+            result.put("end", null);
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("start", earliestDate);
-        result.put("end", latestDate);
+
         return result;
     }
     /**
@@ -393,48 +492,171 @@ public class ImgsController {
      * eg. http://localhost:9090/imgs/WEA_U10/getImgsPath?year=2019&month=1&day=1
      */
     @GetMapping("/predictionResult/ssta")
-    public Map<String,  Object> getSstaData(String year, String month, String day) {
-        List<Imgs> imgsData1 = ImgsMapperEnso.findImgsInfoByDayType(year, month,"ENSO_ASC");
-        List<Imgs> imgsData2 = ImgsMapperEnso.findImgsInfoByDayType(year, month,"ENSO_MC");
-        List<Imgs> imgsData3 = ImgsMapperEnso.findImgsInfoByDayType(year, month,"ENSO_GTC");
-        Map<String, Object> result = new HashMap<>();
-        int length1 = 0;
-        int length2 = 0;
-        int length3 = 0;
-        // 将 data 字段从 JSON 字符串转换为 List<String>
-        List<String> imgPaths = new ArrayList<>();
-        List<String> imgPaths1 = new ArrayList<>();
-        List<String> imgPaths2 = new ArrayList<>();
-        List<String> imgPaths3 = new ArrayList<>();
-        String title1 =year+"年"+month+"月 ENSO_ASC 预测结果";
-        String title2 =year+"年"+month+"月 ENSO_MC 预测结果";
-        String title3 =year+"年"+month+"月 ENSO_GTC 预测结果";
-        List<String> titles=new ArrayList<>();
-        if (!imgsData1.isEmpty() && !imgsData2.isEmpty() && !imgsData3.isEmpty()) {
-            String imgSrcData1 = imgsData1.get(0).getData();
-            String imgSrcData2 = imgsData2.get(0).getData();
-            String imgSrcData3 = imgsData3.get(0).getData();
-            imgPaths1 = Arrays.asList(imgSrcData1.split(","));
-            imgPaths2 = Arrays.asList(imgSrcData2.split(","));
-            imgPaths3 = Arrays.asList(imgSrcData3.split(","));
-            length1 = imgPaths1.size();
-            length2 = imgPaths2.size();
-            length3 = imgPaths3.size();
-            for (int i = 0; i < length1; i++) {
-                imgPaths.add(imgPaths1.get(i));
-                titles.add(title1);
-            }
-            for (int i = 0; i < length2; i++) {
-                imgPaths.add(imgPaths2.get(i));
-                titles.add(title2);
-            }
-            for (int i = 0; i < length3; i++) {
-                imgPaths.add(imgPaths3.get(i));
-                titles.add(title3);
+    public Map<String, Object> getSstaData(
+            String year,
+            String month
+    ) {
+
+        List<Imgs> ascData =
+                ImgsMapperEnso.findImgsInfoByDayType(
+                        year,
+                        month,
+                        "ENSO_ASC"
+                );
+
+        List<Imgs> mcData =
+                ImgsMapperEnso.findImgsInfoByDayType(
+                        year,
+                        month,
+                        "ENSO_MC"
+                );
+
+        List<Imgs> gtcData =
+                ImgsMapperEnso.findImgsInfoByDayType(
+                        year,
+                        month,
+                        "ENSO_GTC"
+                );
+
+
+        List<String> imgPaths =
+                new ArrayList<>();
+
+        List<String> titles =
+                new ArrayList<>();
+
+
+        // ========================================================
+        // ASC
+        // ========================================================
+
+        if (
+                ascData != null
+                        && !ascData.isEmpty()
+                        && ascData.get(0).getData() != null
+                        && !ascData.get(0).getData().isBlank()
+        ) {
+
+            String[] paths =
+                    ascData.get(0)
+                            .getData()
+                            .split(",");
+
+
+            for (String path : paths) {
+
+                String trimmedPath =
+                        path.trim();
+
+                if (!trimmedPath.isEmpty()) {
+
+                    imgPaths.add(
+                            trimmedPath
+                    );
+
+                    titles.add(
+                            year
+                                    + "年"
+                                    + month
+                                    + "月 ENSO_ASC 预测结果"
+                    );
+                }
             }
         }
-        result.put("data", imgPaths);
-        result.put("titles", titles);
+
+
+        // ========================================================
+        // MC
+        // ========================================================
+
+        if (
+                mcData != null
+                        && !mcData.isEmpty()
+                        && mcData.get(0).getData() != null
+                        && !mcData.get(0).getData().isBlank()
+        ) {
+
+            String[] paths =
+                    mcData.get(0)
+                            .getData()
+                            .split(",");
+
+
+            for (String path : paths) {
+
+                String trimmedPath =
+                        path.trim();
+
+                if (!trimmedPath.isEmpty()) {
+
+                    imgPaths.add(
+                            trimmedPath
+                    );
+
+                    titles.add(
+                            year
+                                    + "年"
+                                    + month
+                                    + "月 ENSO_MC 预测结果"
+                    );
+                }
+            }
+        }
+
+
+        // ========================================================
+        // GTC
+        // ========================================================
+
+        if (
+                gtcData != null
+                        && !gtcData.isEmpty()
+                        && gtcData.get(0).getData() != null
+                        && !gtcData.get(0).getData().isBlank()
+        ) {
+
+            String[] paths =
+                    gtcData.get(0)
+                            .getData()
+                            .split(",");
+
+
+            for (String path : paths) {
+
+                String trimmedPath =
+                        path.trim();
+
+                if (!trimmedPath.isEmpty()) {
+
+                    imgPaths.add(
+                            trimmedPath
+                    );
+
+                    titles.add(
+                            year
+                                    + "年"
+                                    + month
+                                    + "月 ENSO_GTC 预测结果"
+                    );
+                }
+            }
+        }
+
+
+        Map<String, Object> result =
+                new HashMap<>();
+
+        result.put(
+                "data",
+                imgPaths
+        );
+
+        result.put(
+                "titles",
+                titles
+        );
+
+
         return result;
     }
 

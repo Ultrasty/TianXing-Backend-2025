@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class EcmwfImportService {
     private static final List<Integer> VALID_TIMES = Arrays.asList(0, 6, 12, 18);
-    private static final List<String> VALID_SOURCES = Arrays.asList("ecmwf", "aws", "google", "azure");
+    private static final List<String> VALID_SOURCES = Arrays.asList("ecmwf", "aws", "google", "azure", "cds");
     private static final List<String> VALID_MODELS = Arrays.asList("ifs", "aifs-single", "aifs-ens");
     private static final List<String> VALID_TYPES = Arrays.asList("fc", "pf", "em", "es", "ep");
 
@@ -75,13 +75,15 @@ public class EcmwfImportService {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ECMWF 解析脚本没有返回合法 data 数组");
             }
 
+            JsonNode processedNode = processAndValidateDataNode(dataNode, request);
+
             Map<String, Object> inserted = forecastDataService.createFromDecodedJson(
                     request.getDataset(),
                     request.getYear(),
                     request.getMonth(),
                     request.getVarModel(),
-                    objectMapper.writeValueAsString(dataNode)
-            );
+                    objectMapper.writeValueAsString(processedNode),
+                    request.getOverwrite());
 
             Map<String, Object> result = new LinkedHashMap<String, Object>();
             result.put("record", inserted);
@@ -104,8 +106,8 @@ public class EcmwfImportService {
 
     private List<String> buildCommand(EcmwfImportRequest request, Path output) {
         List<String> command = new ArrayList<String>();
-        command.add(resolvePythonExecutable());
-        command.add(resolveScriptPath());
+        command.add(pythonExecutable);
+        command.add(resolveScriptPath(scriptPath));
         command.add("--output");
         command.add(output.toAbsolutePath().toString());
         command.add("--time");
@@ -137,34 +139,27 @@ public class EcmwfImportService {
             command.add("--stream");
             command.add(request.getStream().trim());
         }
+        if (!isBlank(request.getDataset())) {
+            command.add("--dataset");
+            command.add(request.getDataset().trim());
+        }
+        if (!isBlank(request.getVarModel())) {
+            command.add("--var_model");
+            command.add(request.getVarModel().trim());
+        }
         return command;
     }
 
-    private String resolvePythonExecutable() {
-        if (!"python3".equalsIgnoreCase(pythonExecutable)) {
-            return pythonExecutable;
+    private String resolveScriptPath(String configuredPath) {
+        Path path = Path.of(configuredPath);
+        if (Files.exists(path)) {
+            return path.toAbsolutePath().toString();
         }
-        String os = System.getProperty("os.name", "").toLowerCase();
-        if (os.contains("win")) {
-            return "python";
+        Path demoBackendPath = Path.of("demo_backend", configuredPath);
+        if (Files.exists(demoBackendPath)) {
+            return demoBackendPath.toAbsolutePath().toString();
         }
-        return pythonExecutable;
-    }
-
-    private String resolveScriptPath() {
-        Path direct = Paths.get(scriptPath);
-        if (Files.exists(direct)) {
-            return direct.toAbsolutePath().toString();
-        }
-        Path underDemo = Paths.get("demo_backend", scriptPath);
-        if (Files.exists(underDemo)) {
-            return underDemo.toAbsolutePath().toString();
-        }
-        Path fromUserDir = Paths.get(System.getProperty("user.dir", "."), scriptPath);
-        if (Files.exists(fromUserDir)) {
-            return fromUserDir.toAbsolutePath().toString();
-        }
-        return scriptPath;
+        return path.toAbsolutePath().toString();
     }
 
     private void validate(EcmwfImportRequest request) {
@@ -172,7 +167,7 @@ public class EcmwfImportService {
             throw badRequest("请求体不能为空");
         }
         if (isBlank(request.getParam())) {
-            throw badRequest("param 不能为空，例如 2t / msl / t / u / v");
+            throw badRequest("param 不能为空，例如 skt / 2t / msl / ci / t / u / v");
         }
         int time = request.getTime() == null ? 0 : request.getTime();
         if (!VALID_TIMES.contains(time)) {
@@ -196,6 +191,31 @@ public class EcmwfImportService {
         }
         forecastDataService.validateTarget(
                 request.getDataset(), request.getYear(), request.getMonth(), request.getVarModel());
+    }
+
+    private static final List<String> ONE_DIMENSIONAL_MODELS = Arrays.asList(
+            "nino34_asc", "nino34_gtc", "nino34_mc", "nino34_mean",
+            "index_NAO_MCD",
+            "prediction_IceTFT", "mean_IceTFT", "upper_IceTFT", "lower_IceTFT");
+
+    private JsonNode processAndValidateDataNode(JsonNode dataNode, EcmwfImportRequest request) {
+        String varModel = request.getVarModel();
+        boolean isNestedGrid = isMultiDimensionalArray(dataNode);
+
+        if (ONE_DIMENSIONAL_MODELS.contains(varModel) && isNestedGrid) {
+            throw badRequest("目标 var_model [" + varModel + "] 期望保存一维指数时间序列，但目前从 ECMWF 获取的数据为原始多维气象场网格。"
+                    + "为防止数据格式紊乱，系统已拦截；若需保存网格请选择网格类 var_model（如 grid_NAO_MCD）。");
+        }
+
+        return dataNode;
+    }
+
+    private boolean isMultiDimensionalArray(JsonNode node) {
+        if (node != null && node.isArray() && node.size() > 0) {
+            JsonNode firstChild = node.get(0);
+            return firstChild != null && firstChild.isArray();
+        }
+        return false;
     }
 
     private String defaultString(String value, String defaultValue) {
